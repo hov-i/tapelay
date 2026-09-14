@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="tapelay">
+  <style>
+    :root { --ink: #171717; }
+    @media (prefers-color-scheme: dark) { :root { --ink: #f5f5f5; } }
+  </style>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="var(--ink)"/>
+  <rect x="10" y="21" width="44" height="22" rx="5" fill="#f0a12e"/>
+  <circle cx="23" cy="32" r="4.5" fill="var(--ink)"/>
+  <circle cx="41" cy="32" r="4.5" fill="var(--ink)"/>
+</svg>

@@ -1,0 +1,25 @@
+{
+  "//": "Type-checks the server against protocol.d.ts. Run with `npm run typecheck:api`.",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "./web/node_modules/@types"
+    ]
+  },
+  "include": [
+    "protocol.d.ts",
+    "sentry.mjs",
+    "exports.mjs",
+    "credentials.mjs"
+  ]
+}

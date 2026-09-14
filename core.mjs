@@ -1,4 +1,4 @@
-import { writeFile, mkdir, rm, stat, rename } from 'node:fs/promises'
+import { writeFile, mkdir, rm, stat, rename, copyFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -31,12 +31,17 @@ export async function convertEvents({
   outPath,
   speed = 4,
   scale = 0.75,
+  transcode = true,
+  keepWindowMs = null,
+  format = 'mp4',
+  gifFps = 10,
+  gifWidth = 800,
   onInit = () => {},
   onProgress = () => {},
   onLog = () => {},
   signal,
 } = {}) {
-  if (!events || events.length < 2) throw new Error('rrweb 이벤트가 부족합니다.')
+  if (!events || events.length < 2) throw new Error('Not enough rrweb events.')
   if (signal?.aborted) throw new Error('aborted')
 
   const meta = events.find((e) => e.type === 4)
@@ -45,7 +50,7 @@ export async function convertEvents({
   const outW = Math.round((srcW * scale) / 2) * 2
   const outH = Math.round((srcH * scale) / 2) * 2
   const totalMs = events[events.length - 1].timestamp - events[0].timestamp
-  if (totalMs <= 0) throw new Error('재생 길이가 0입니다.')
+  if (totalMs <= 0) throw new Error('Session duration is zero.')
   const replayMs = totalMs / speed
 
   onInit({ srcW, srcH, outW, outH, totalMs, replayMs })
@@ -54,6 +59,11 @@ export async function convertEvents({
   await mkdir(tmp, { recursive: true })
   const inputPath = path.join(tmp, 'events.json')
   await writeFile(inputPath, JSON.stringify(events))
+
+  // rrvideo hands the file straight from Playwright's recorder, which always
+  // produces VP8 in a WebM container regardless of the output extension. Write
+  // it to a .webm path so nothing downstream is misled, then transcode.
+  const rawPath = path.join(tmp, 'raw.webm')
 
   const started = Date.now()
   let rrvideoPercent = null
@@ -67,12 +77,12 @@ export async function convertEvents({
   }, 500)
 
   try {
-    onLog(`rrvideo 시작 (speed=${speed}x, ratio=${scale})…`)
-    onLog('Playwright Chromium 기동 중… (첫 실행이면 다운로드 대기 길 수 있음)')
+    onLog(`Starting rrvideo (speed=${speed}x, ratio=${scale})…`)
+    onLog('Launching Playwright Chromium… (the first run may wait on a download)')
 
     await transformToVideo({
       input: inputPath,
-      output: outPath,
+      output: rawPath,
       headless: true,
       resolutionRatio: scale,
       onProgressUpdate: (data) => {
@@ -97,6 +107,26 @@ export async function convertEvents({
       },
     })
 
+    // keepWindowMs: drop the FullSnapshot prefix and the Chromium lead-in so only
+    // the requested window survives. Same trick as the segmented path: derive the
+    // trim from the rendered file's duration rather than from event timestamps.
+    let trimSec = 0
+    if (keepWindowMs) {
+      const wantSec = keepWindowMs / speed / 1000
+      const rawSec = await probeDurationSec(rawPath)
+      if (rawSec && rawSec - wantSec > 0.05) trimSec = rawSec - wantSec
+    }
+
+    if (format === 'gif') {
+      onLog('Encoding GIF…')
+      await ffmpegToGif(rawPath, outPath, trimSec, { fps: gifFps, width: gifWidth })
+    } else if (transcode) {
+      onLog('Encoding H.264…')
+      await ffmpegToH264(rawPath, outPath, trimSec)
+    } else {
+      await copyFile(rawPath, outPath)
+    }
+
     const info = await stat(outPath).catch(() => null)
     const wallMs = Date.now() - started
     onProgress({ percent: 100, wallMs, replayMs })
@@ -107,11 +137,46 @@ export async function convertEvents({
   }
 }
 
-// 세그먼트별로 fresh Chromium 인스턴스를 띄워 메모리를 리셋시키며 변환.
-// 1GB RAM 환경에서도 긴 세션(1시간 등)을 처리하기 위한 핵심 함수.
-// 각 윈도우는 [winStart, winEnd] 시간 범위를 담당하되, rrweb 재생을 위해
-// winStart 이전의 가장 가까운 FullSnapshot(type=2) 부터 이벤트를 포함시킨다.
-// 그 prefix 만큼 영상이 길어지므로 ffmpeg -ss 로 잘라낸 뒤 concat 한다.
+// Slices [fromMs, toMs] out of a session instead of converting the whole thing.
+// This is for the length people actually attach to a ticket, like the thirty
+// seconds around an error. The returned events start at the preceding
+// FullSnapshot so they cover more than the window; pass windowMs to
+// convertEvents as keepWindowMs to trim the render back down.
+export function sliceRange(events, fromMs = 0, toMs = null) {
+  if (!events || events.length < 2) throw new Error('Not enough rrweb events.')
+  const t0 = events[0].timestamp
+  const tEnd = events[events.length - 1].timestamp
+  const winStart = t0 + Math.max(0, fromMs)
+  const winEnd = toMs == null ? tEnd : Math.min(tEnd, t0 + toMs)
+
+  if (winStart >= tEnd) {
+    throw new Error(
+      `--from is past the end of the session (session is ${((tEnd - t0) / 1000).toFixed(0)}s).`,
+    )
+  }
+  if (winEnd <= winStart) throw new Error('--to must be greater than --from.')
+
+  const sliced = sliceForWindow(events, winStart, winEnd)
+  if (!sliced || sliced.events.length < 2) {
+    throw new Error('No replayable FullSnapshot exists for that range.')
+  }
+  return { events: sliced.events, windowMs: winEnd - winStart }
+}
+
+export function hasFfmpeg() {
+  return new Promise((resolve) => {
+    const proc = spawn('ffmpeg', ['-version'], { stdio: 'ignore' })
+    proc.on('error', () => resolve(false))
+    proc.on('close', (code) => resolve(code === 0))
+  })
+}
+
+// Converts window by window, each in a fresh Chromium so memory resets between
+// them. This is what makes an hour-long session possible in 1GB of RAM.
+// A window covers [winStart, winEnd], but rrweb can only start replaying from a
+// FullSnapshot (type=2), so events are sliced from the last snapshot before
+// winStart. That prefix makes the clip longer than the window, so it is trimmed
+// with ffmpeg before the segments are concatenated.
 export async function convertEventsSegmented({
   events,
   outPath,
@@ -124,9 +189,9 @@ export async function convertEventsSegmented({
   onProgress = () => {},
   onLog = () => {},
 } = {}) {
-  // 임계값 미지정 시 segmentMs 와 같이 잡음 (= 항상 분할). 호출자가 명시하면 그 값을 사용.
+  // With no threshold given, use segmentMs (= always split). Callers may override.
   const threshold = segmentThresholdMs ?? segmentMs
-  if (!events || events.length < 2) throw new Error('rrweb 이벤트가 부족합니다.')
+  if (!events || events.length < 2) throw new Error('Not enough rrweb events.')
 
   const meta = events.find((e) => e.type === 4)
   const srcW = Math.max(320, Math.min(3840, meta?.data?.width ?? 1280))
@@ -136,7 +201,7 @@ export async function convertEventsSegmented({
   const t0 = events[0].timestamp
   const tEnd = events[events.length - 1].timestamp
   const totalMs = tEnd - t0
-  if (totalMs <= 0) throw new Error('재생 길이가 0입니다.')
+  if (totalMs <= 0) throw new Error('Session duration is zero.')
   const replayMs = totalMs / speed
 
   const boundaries = []
@@ -148,11 +213,11 @@ export async function convertEventsSegmented({
   onInit({ srcW, srcH, outW, outH, totalMs, replayMs, segments: segCount })
 
   if (totalMs <= threshold) {
-    onLog(`세션 ${(totalMs / 60000).toFixed(1)}분 ≤ 임계값 ${threshold / 60000}분 → 단일 변환으로 처리`)
+    onLog(`Session ${(totalMs / 60000).toFixed(1)}min <= threshold ${threshold / 60000}min, converting in one pass`)
     return await convertEvents({ events, outPath, speed, scale, onInit: () => {}, onProgress, onLog })
   }
 
-  onLog(`총 ${segCount}개 세그먼트로 분할 (각 최대 ${segmentMs / 60000}분)`)
+  onLog(`Split into ${segCount} segments (max ${segmentMs / 60000}min each)`)
 
   const tmpRoot = workDir
     ? path.join(workDir, 'segments')
@@ -168,7 +233,7 @@ export async function convertEventsSegmented({
       const { winStart, winEnd } = boundaries[i]
       const sliced = sliceForWindow(events, winStart, winEnd)
       if (!sliced || sliced.events.length < 2) {
-        onLog(`세그먼트 ${i + 1}/${segCount} 건너뜀 (이벤트 부족)`)
+        onLog(`Segment ${i + 1}/${segCount} skipped (not enough events)`)
         continue
       }
 
@@ -177,12 +242,16 @@ export async function convertEventsSegmented({
       const skipMs = winStart - sliced.snapshotTs
       const skipSec = skipMs > 0 ? skipMs / speed / 1000 : 0
 
-      const rawPath = path.join(tmpRoot, `seg-${String(i).padStart(3, '0')}-raw.mp4`)
+      // rrvideo (Playwright) always emits VP8/WebM, so take the raw file as .webm.
+      // Each segment is trimmed and encoded to H.264 in one pass so the final
+      // concat can be a plain copy. Trimming VP8 with -c copy would only cut on
+      // keyframes and leave the prefix behind.
+      const rawPath = path.join(tmpRoot, `seg-${String(i).padStart(3, '0')}-raw.webm`)
       const segPath = path.join(tmpRoot, `seg-${String(i).padStart(3, '0')}.mp4`)
 
       onLog(
-        `세그먼트 ${i + 1}/${segCount} 변환 중… (윈도우 ${(segDurMs / 60000).toFixed(1)}분` +
-          (skipSec > 0.5 ? `, prefix ${(skipMs / 60000).toFixed(1)}분 trim 예정` : '') +
+        `Converting segment ${i + 1}/${segCount}… (window ${(segDurMs / 60000).toFixed(1)}min` +
+          (skipSec > 0.5 ? `, trimming ${(skipMs / 60000).toFixed(1)}min of prefix` : '') +
           `)`,
       )
 
@@ -191,6 +260,7 @@ export async function convertEventsSegmented({
         outPath: rawPath,
         speed,
         scale,
+        transcode: false,
         onInit: () => {},
         onProgress: ({ wallMs }) => {
           const segPct = Math.min(1, wallMs / Math.max(1, segReplayMs + skipSec * 1000))
@@ -207,23 +277,27 @@ export async function convertEventsSegmented({
         onLog: (m) => onLog(`[${i + 1}/${segCount}] ${m}`),
       })
 
-      if (skipSec > 0.5) {
-        await ffmpegTrim(rawPath, segPath, skipSec)
-        await rm(rawPath, { force: true }).catch(() => {})
-      } else {
-        await rename(rawPath, segPath)
-      }
+      // skipSec computed from timestamps cannot see the lead-in between Chromium
+      // starting to record and the replay actually beginning (about a second).
+      // The part we want is always the TAIL of the raw clip, so subtracting the
+      // desired length from the real length corrects for the lead-in too.
+      const wantSec = segReplayMs / 1000
+      const rawSec = await probeDurationSec(rawPath)
+      const trimSec = rawSec && rawSec > wantSec ? rawSec - wantSec : skipSec
+
+      await ffmpegToH264(rawPath, segPath, trimSec > 0.05 ? trimSec : 0)
+      await rm(rawPath, { force: true }).catch(() => {})
       segFiles.push(segPath)
       cumulativeReplayWall += segReplayMs + skipSec * 1000
     }
 
-    if (segFiles.length === 0) throw new Error('변환된 세그먼트가 없습니다.')
+    if (segFiles.length === 0) throw new Error('No segments were converted.')
 
     if (segFiles.length === 1) {
-      onLog('세그먼트가 1개라 concat 생략, 그대로 출력합니다.')
+      onLog('Only one segment, skipping concat')
       await rename(segFiles[0], outPath)
     } else {
-      onLog(`ffmpeg concat 시작 (${segFiles.length}개 세그먼트)…`)
+      onLog(`Concatenating ${segFiles.length} segments with ffmpeg…`)
       await ffmpegConcat(segFiles, outPath)
     }
 
@@ -257,6 +331,23 @@ function sliceForWindow(events, winStart, winEnd) {
   return { events: out, snapshotTs: events[snapIdx].timestamp }
 }
 
+function probeDurationSec(file) {
+  return new Promise((resolve) => {
+    const proc = spawn(
+      'ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file],
+      { stdio: ['ignore', 'pipe', 'ignore'] },
+    )
+    let out = ''
+    proc.stdout.on('data', (d) => { out += d.toString() })
+    proc.on('error', () => resolve(null))
+    proc.on('close', () => {
+      const n = parseFloat(out.trim())
+      resolve(Number.isFinite(n) ? n : null)
+    })
+  })
+}
+
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
     const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] })
@@ -265,23 +356,52 @@ function runFfmpeg(args) {
     proc.on('error', reject)
     proc.on('close', (code) => {
       if (code === 0) resolve()
-      else reject(new Error(`ffmpeg 종료 코드 ${code}: ${stderr.slice(-500)}`))
+      else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`))
     })
   })
 }
 
-async function ffmpegTrim(input, output, skipSec) {
-  // -ss 를 -i 앞에 두면 keyframe 단위로 빠르게 seek (정밀도는 1~2초 오차 가능)
-  await runFfmpeg(['-y', '-ss', String(skipSec.toFixed(3)), '-i', input, '-c', 'copy', output])
+// Playwright records VP8/WebM, so renaming the output to .mp4 produces a file
+// QuickTime, PowerPoint and iOS refuse to open. Getting something that actually
+// plays means encoding to H.264. yuv420p is for older players, +faststart lets
+// it start playing before the whole file is downloaded.
+const H264_ARGS = [
+  '-c:v', 'libx264',
+  '-preset', 'veryfast',
+  '-crf', '23',
+  '-pix_fmt', 'yuv420p',
+  '-movflags', '+faststart',
+  '-an',
+]
+
+// With skipSec > 0 the head is dropped during the encode. -ss goes AFTER -i to
+// force decode-based seeking; before -i it would snap to keyframes.
+async function ffmpegToH264(input, output, skipSec = 0) {
+  const seek = skipSec > 0 ? ['-ss', skipSec.toFixed(3)] : []
+  await runFfmpeg(['-y', '-i', input, ...seek, ...H264_ARGS, output])
+}
+
+// GIF is a 256-colour format and a naive encode turns UI text to mush. Building
+// a palette from the clip itself with palettegen, then applying it with
+// paletteuse, keeps screenshots legible. stats_mode=diff weights the palette
+// toward regions that move, which suits a session replay where most of the
+// frame is static.
+async function ffmpegToGif(input, output, skipSec = 0, { fps = 10, width = 800 } = {}) {
+  const seek = skipSec > 0 ? ['-ss', skipSec.toFixed(3)] : []
+  const filter =
+    `fps=${fps},scale=${width}:-1:flags=lanczos,split[a][b];` +
+    `[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3`
+  await runFfmpeg(['-y', '-i', input, ...seek, '-vf', filter, '-loop', '0', output])
 }
 
 async function ffmpegConcat(inputs, output) {
   const listFile = output + '.concat.txt'
-  // ffmpeg concat demuxer는 파일 경로에 작은따옴표가 있으면 이스케이프 필요
+  // The ffmpeg concat demuxer needs single quotes in paths escaped
   const content = inputs.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n')
   await writeFile(listFile, content)
   try {
-    await runFfmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', listFile, '-c', 'copy', output])
+    // Segments are already H.264/mp4, so this only joins them, no re-encode.
+    await runFfmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', listFile, '-c', 'copy', '-movflags', '+faststart', output])
   } finally {
     await rm(listFile, { force: true }).catch(() => {})
   }
