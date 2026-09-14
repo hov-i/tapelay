@@ -19,6 +19,7 @@
     "credentials.mjs",
     "exports.mjs",
     "server.mjs",
+    "protocol.d.ts",
     "public/",
     "README.ko.md"
   ],
@@ -63,7 +64,8 @@
     "dev:web": "npm --prefix web run dev",
     "prepublishOnly": "npm run build:web",
     "typecheck:api": "web/node_modules/.bin/tsc -p tsconfig.api.json",
-    "test:login": "node scripts/device-login-test.mjs"
+    "test:login": "node scripts/device-login-test.mjs",
+    "test:sentry": "node scripts/sentry-smoke.mjs"
   },
   "dependencies": {
     "express": "^4.21.1",

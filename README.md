@@ -14,6 +14,13 @@ Works with Sentry and PostHog replay exports out of the box, and converts hour-l
 2. **Long sessions.** `rrvideo` replays the whole session in one Chromium instance, so a one-hour recording exhausts memory before it finishes. This splits the session into windows, converts each in a fresh browser, and stitches the pieces with ffmpeg. A 60-minute session converts in 1 GB of RAM.
 3. **A file that actually opens.** Playwright's recorder emits VP8 in a WebM container no matter what you name the output, so a `.mp4` from a plain `rrvideo` run will not open in QuickTime, PowerPoint or on iOS. Everything here is encoded to H.264 with `yuv420p` and `+faststart`, which is the point when you are sending it to someone who is not a developer.
 
+## Requirements
+
+- Node 18 or later
+- `ffmpeg` on your `PATH` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
+
+Chromium is downloaded automatically by Playwright on first run, so the first conversion takes longer than the rest.
+
 ## Quick start
 
 From a Sentry replay URL, which is usually where you are when you need this:

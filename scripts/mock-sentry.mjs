@@ -120,8 +120,10 @@ http
           {
             id: REPLAY_ID,
             started_at: new Date(Date.now() - 3600e3).toISOString(),
+            finished_at: new Date(Date.now() - 3600e3 + durationSec * 1000).toISOString(),
             duration: durationSec,
             count_errors: 3,
+            error_ids: ['e1', 'e2', 'e3'],
             urls: ['https://app.acme.com/orders/4821'],
             browser: { name: 'Chrome', version: '141.0' },
             os: { name: 'macOS' },
@@ -131,8 +133,10 @@ http
           {
             id: 'ffffffff1111222233334444555566ee',
             started_at: new Date(Date.now() - 7200e3).toISOString(),
+            finished_at: new Date(Date.now() - 7200e3 + 42000).toISOString(),
             duration: 42,
             count_errors: 1,
+            error_ids: ['e9'],
             urls: ['https://app.acme.com/settings'],
             browser: { name: 'Safari', version: '18.2' },
             os: { name: 'iOS' },
