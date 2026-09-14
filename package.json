@@ -1,15 +1,72 @@
 {
-  "name": "rrweb-to-mp4",
-  "version": "2.0.0",
-  "private": true,
+  "name": "tapelay",
+  "version": "0.3.0",
+  "description": "Turn a Sentry session replay into an MP4 or GIF on your own machine. Paste the replay URL, clip the range around the error, hand it to someone who cannot open Sentry. rrweb session recording to video.",
   "type": "module",
+  "license": "MIT",
+  "author": "hov-i",
+  "main": "./core.mjs",
+  "exports": {
+    ".": "./core.mjs"
+  },
+  "bin": {
+    "tapelay": "./convert.mjs"
+  },
+  "files": [
+    "convert.mjs",
+    "core.mjs",
+    "sentry.mjs",
+    "credentials.mjs",
+    "exports.mjs",
+    "server.mjs",
+    "public/",
+    "README.ko.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "rrweb",
+    "rrvideo",
+    "mp4",
+    "video",
+    "session-replay",
+    "session-recording",
+    "sentry",
+    "posthog",
+    "replay",
+    "ffmpeg",
+    "playwright",
+    "cli",
+    "sentry-replay",
+    "jira",
+    "bug-report",
+    "screen-recording",
+    "gif",
+    "rrweb-to-mp4",
+    "session-replay-to-video",
+    "bug-reporting"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hov-i/tapelay.git"
+  },
+  "homepage": "https://github.com/hov-i/tapelay#readme",
+  "bugs": {
+    "url": "https://github.com/hov-i/tapelay/issues"
+  },
   "scripts": {
     "start": "node server.mjs",
     "dev": "node server.mjs",
-    "cli": "node convert.mjs"
+    "cli": "node convert.mjs",
+    "build:web": "npm --prefix web install && npm --prefix web run build",
+    "dev:web": "npm --prefix web run dev",
+    "prepublishOnly": "npm run build:web",
+    "typecheck:api": "web/node_modules/.bin/tsc -p tsconfig.api.json",
+    "test:login": "node scripts/device-login-test.mjs"
   },
   "dependencies": {
-    "express": "4.21.1",
+    "express": "^4.21.1",
     "rrvideo": "2.0.0-alpha.20"
   }
 }

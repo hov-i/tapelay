@@ -1,137 +1,151 @@
-# rrweb-to-mp4
+# tapelay
 
-Sentry replay JSON(rrweb) → MP4 변환기. 백엔드는 Sentry 팀 공식 도구인
-[`@rrweb/rrvideo`](https://www.npmjs.com/package/@rrweb/rrvideo)
-(Playwright + rrweb 기반)을 그대로 사용. 위에 드래그앤드롭 웹 UI만 얹은 형태.
+Convert an rrweb session recording into an MP4 you can attach to a ticket, drop in a Slack thread, or show to someone who does not have a replay viewer.
 
-## 설치
+Works with Sentry and PostHog replay exports out of the box, and converts hour-long sessions without running out of memory.
 
-```powershell
-npm install
+[한국어 문서](./README.ko.md)
+
+## Why
+
+[`rrvideo`](https://www.npmjs.com/package/rrvideo) already renders rrweb events to video, and this package uses it underneath. Two things sit on top of it:
+
+1. **Input normalization.** `rrvideo` wants a bare rrweb event array. What you actually download from Sentry or PostHog is a wrapper object, often with the events nested under `events`, `segments`, or `data`, sometimes split across several segment files. This unwraps and merges them for you.
+2. **Long sessions.** `rrvideo` replays the whole session in one Chromium instance, so a one-hour recording exhausts memory before it finishes. This splits the session into windows, converts each in a fresh browser, and stitches the pieces with ffmpeg. A 60-minute session converts in 1 GB of RAM.
+3. **A file that actually opens.** Playwright's recorder emits VP8 in a WebM container no matter what you name the output, so a `.mp4` from a plain `rrvideo` run will not open in QuickTime, PowerPoint or on iOS. Everything here is encoded to H.264 with `yuv420p` and `+faststart`, which is the point when you are sending it to someone who is not a developer.
+
+## Quick start
+
+From a Sentry replay URL, which is usually where you are when you need this:
+
+```bash
+export SENTRY_AUTH_TOKEN=...   # Settings > Account > User Auth Tokens, project:read scope
+npx tapelay https://acme.sentry.io/replays/<id>/ bug-1234.mp4 --from 4:20 --to 4:50
 ```
 
-`@rrweb/rrvideo`가 Playwright를 끌어오고, `postinstall` 훅이 Chromium(~150MB)을 자동으로 받습니다.
+Copy the replay URL out of Sentry, name the output, drag it into the ticket. You never have to work out how to export the JSON, because there is no documented way to do it by hand.
 
-## 1. 웹 UI
+From a file you already have:
 
-```powershell
-npm start
+```bash
+npx tapelay replay.json
 ```
 
-브라우저로 [http://localhost:3000](http://localhost:3000) → JSON 드롭 → 자동 변환·다운로드.
+That writes `replay.mp4` next to the input.
 
-옵션:
-- **비디오 재생 속도** (1x ~ 16x) — 결과 MP4가 몇 배속으로 재생될지. 변환 시간도 같이 줄어듦.
-- **해상도** (50% / 75% / 100%)
+## Clip a range
 
+`--from` and `--to` take seconds or `m:ss`. Sentry tells you the second the error happened, and what belongs in a ticket is the thirty seconds around it, not the whole hour:
 
-옵션:
-
-| 옵션 | 기본 | 설명 |
-|------|------|------|
-| `--speed N` | 4 | 비디오 재생 속도 (= rrweb 내부 재생 배속) |
-| `--scale N` | 0.75 | 해상도 배율 (0.25 ~ 1) |
-
-```powershell
-node convert.mjs replay.json out.mp4 --speed 1 --scale 1
+```bash
+npx tapelay replay.json --from 4:20 --to 4:50
 ```
 
-## 변환 시간 (1시간 세션 기준)
+This also sidesteps the conversion time problem: a 30-second clip takes seconds, where the full session takes minutes. If the replay URL carries Sentry's `?t=` playback position, that becomes the default `--from`, so pausing at the error before you copy the URL is enough.
 
-배속 = 결과 MP4 재생 속도이자 변환 시 rrweb 재생 속도. 둘은 같이 움직임 — 4x로 변환하면 결과도 4배속.
+One caveat: rrweb can only start replaying from a full DOM snapshot, so a clip is rendered from the nearest snapshot before your start point and then trimmed. Conversion cost tracks the distance back to that snapshot, not the length of the clip.
 
-| 옵션 | 변환 시간 | 결과 길이 |
-|------|-----------|-----------|
-| `--speed 1` | 약 1시간 | 1시간 |
-| `--speed 2` | 약 30분 | 30분 |
-| `--speed 4` (기본) | 약 15분 | 15분 |
-| `--speed 8` | 약 7분 | 7분 |
-| `--speed 16` | 약 4분 | 4분 |
+## Privacy
 
-`@rrweb/rrvideo`는 Playwright 내장 video recording을 사용해 세션 길이만큼 실제로 재생하면서 녹화합니다. 따라서 1x 부드러운 변환은 본질적으로 세션 길이만큼 시간이 듭니다 (rrvideo든, 다른 어떤 헤드리스 도구든 동일).
+Everything runs on your machine. The replay is fetched from your own Sentry org with your own token, converted locally, and written to a local file. Nothing is uploaded anywhere, which is the point when the recording contains real user sessions.
 
-## 동작 방식
+## Web UI
 
-### 전체 변환 파이프라인
+```bash
+npx tapelay serve
+```
 
-세션 길이에 따라 두 경로로 분기됩니다.
+Open http://localhost:3000 and the whole flow is on one page: sign in, browse the replays in your org, pick the range around the error, convert. The second tab takes an rrweb JSON file by drag and drop instead. Progress streams over SSE; `--port` changes the port.
 
-- **세션 ≤ 25분** → 단일 변환 (Chromium 1번 부팅, 가장 빠름)
-- **세션 > 25분** → 15분 윈도우 단위 세그먼트 변환 (메모리 안전)
+Signing in usually takes no setup: if `sentry-cli` is already configured on the machine, its token in `~/.sentryclirc` is used and the connect screen never appears. Otherwise there is a **Sign in with Sentry** button (OAuth device flow — it needs `SENTRY_CLIENT_ID` from a public integration in your org, and Sentry 26.1.0+), or you can paste a user auth token with the `project:read` scope. See [docs/guide/gui.md](docs/guide/gui.md) for the details.
+
+## Options
+
+| Option | Default | Description |
+|---|---|---|
+| `--speed <n>` | `4` | Playback speed of the result, 1 to 16. This is also the replay speed during conversion, so a higher value finishes sooner and produces a shorter video. |
+| `--scale <n>` | `0.75` | Resolution ratio, 0.25 to 1. |
+| `--segment <min>` | `15` | Window size for segmented conversion. |
+| `--threshold <min>` | `25` | Sessions shorter than this convert in a single pass. |
+| `--no-segment` | | Never segment. Faster for short sessions, and likely to run out of memory on long ones. |
+| `--no-transcode` | | Skip H.264 encoding and keep Playwright's raw VP8/WebM. Only useful if you have no ffmpeg and something downstream can read WebM. |
+
+## Conversion time
+
+Conversion is a real-time replay, so a 1x conversion takes about as long as the session itself. This is inherent to how rrweb is rendered to video, not specific to this tool.
+
+| Speed | 1-hour session takes | Result length |
+|---|---|---|
+| `--speed 1` | ~60 min | 60 min |
+| `--speed 2` | ~30 min | 30 min |
+| `--speed 4` (default) | ~15 min | 15 min |
+| `--speed 8` | ~7 min | 7 min |
+| `--speed 16` | ~4 min | 4 min |
+
+## How segmented conversion works
+
+Below the threshold, the session is converted in one pass: one Chromium boot, fastest path.
+
+Above it, the session is cut into windows. The complication is that you cannot start replaying rrweb from an arbitrary timestamp. A window must begin at a `FullSnapshot` (`type: 2`), because that is the only event carrying the complete DOM. So each window is sliced from the nearest preceding snapshot, which means the rendered clip starts earlier than the window does. That extra head is trimmed off with `ffmpeg -ss` before the segments are concatenated.
+
+The obvious way to size that trim is from the event timeline, `(windowStart - snapshotTimestamp) / speed`. That is off by a second or so, because it cannot see the lead-in between Chromium starting to record and the replay actually beginning. Since the part you want is always the tail of the clip, measuring the rendered file is exact and self-correcting:
+
+```
+trimSeconds = actualClipDuration - (windowDuration / speed)
+```
+
+Each window gets a fresh Chromium process, so peak memory is bounded by one window instead of the whole session.
 
 ```mermaid
-flowchart TD
-    A[웹 UI: JSON 드롭] -->|POST /jobs| B[server.mjs]
-    B --> C{동시 작업 1개<br/>세션 ≤60분?}
-    C -->|No| X[429 / 413]
-    C -->|Yes| D{세션 ≤25분?}
-    D -->|Yes - 빠른 경로| Q[단일 convertEvents<br/>Chromium 1번]
-    D -->|No - 세그먼트 경로| E[15분 윈도우로 분할]
-    E --> F[세그먼트 루프]
-    F --> G[FullSnapshot부터<br/>이벤트 슬라이스]
-    G --> H[Fresh Chromium<br/>+ rrvideo]
-    H --> I{prefix 있음?}
-    I -->|Yes| J[ffmpeg -ss trim]
-    I -->|No| K[그대로]
-    J --> L{다음 세그먼트?}
-    K --> L
-    L -->|Yes| F
-    L -->|No| M[ffmpeg concat]
-    Q --> N[최종 MP4]
-    M --> N
-    N -.SSE done.-> A
+flowchart LR
+    A[events] --> B{session > threshold?}
+    B -->|no| C[single convertEvents]
+    B -->|yes| D[split into windows]
+    D --> E[slice from preceding FullSnapshot]
+    E --> F[fresh Chromium + rrvideo]
+    F --> G[ffmpeg -ss trim prefix]
+    G --> H{more windows?}
+    H -->|yes| E
+    H -->|no| I[ffmpeg concat]
+    C --> J[final MP4]
+    I --> J
 ```
 
-### 왜 임계값을 두는가
+## Use as a library
 
-세그먼트 변환은 Chromium 콜드 부팅(~3초) + rrvideo 초기화가 윈도우마다 반복되므로,
-짧은 세션은 **세그먼트로 쪼개면 오히려 느려집니다**. 25분 이하면 단일 변환이 빠르고
-메모리도 견딜 만하므로 빠른 경로로 갑니다.
+```js
+import { normalizeEvents, convertEventsSegmented } from 'tapelay'
 
-### 세그먼트 슬라이싱 (왜 trim이 필요한가)
+const events = normalizeEvents(JSON.parse(await readFile('replay.json', 'utf8')))
 
-각 윈도우는 rrweb 재생을 위해 직전의 `FullSnapshot(type=2)`부터 이벤트를 포함시켜야 합니다.
-그래서 변환된 영상 앞쪽에 윈도우 밖의 prefix가 붙고, 이걸 `ffmpeg -ss`로 잘라낸 뒤 concat합니다.
-
-```mermaid
-flowchart TB
-    subgraph T["원본 이벤트 타임라인 (예: 1시간)"]
-        direction LR
-        S0([📸 t=0]) --> E1[events] --> S1([📸 t=7분])
-        S1 --> E2[events] --> S2([📸 t=18분])
-        S2 --> E3[events] --> END[t=60분]
-    end
-
-    T --> W2["윈도우 2: 15~30분"]
-
-    W2 --> P1[직전 snapshot 찾기<br/>→ t=18분]
-    P1 --> P2[슬라이스:<br/>meta + snap@18분 + ~30분]
-    P2 --> P3[Chromium 변환<br/>12분치 영상]
-    P3 --> P4[ffmpeg -ss 트림<br/>15~30분 부분만 남김]
-    P4 --> P5[seg2.mp4]
-
-    style S0 fill:#ffd
-    style S1 fill:#ffd
-    style S2 fill:#ffd
-    style P4 fill:#cfc
+await convertEventsSegmented({
+  events,
+  outPath: 'out.mp4',
+  speed: 4,
+  scale: 0.75,
+  segmentMs: 15 * 60 * 1000,
+  onProgress: ({ percent }) => console.log(percent),
+})
 ```
 
-세그먼트마다 **Chromium이 완전히 재시작**되므로 메모리는 한 윈도우 분량으로 한정됩니다. 덕분에 1GB RAM 환경(Railway Trial 등)에서도 30분~60분 세션이 가능합니다.
+`convertEvents` is the single-pass version with the same option shape, minus the segment settings.
 
-## 파일 구조
+## Requirements
 
-```
-core.mjs        # convertEvents (단일) + convertEventsSegmented (세그먼트)
-server.mjs      # Express 서버 + SSE 진행률 + 가드
-convert.mjs     # CLI 진입점
-Dockerfile      # Playwright 1.60 + ffmpeg (Railway 배포용)
-public/
-  └── index.html  # 드롭존 + 컨트롤 + 진행률 UI
-```
+- Node 18 or newer
+- **Chromium**, installed by Playwright. `rrvideo` pulls in Playwright and its postinstall downloads Chromium (~150 MB) the first time. If that step was skipped, run `npx playwright install chromium`.
+- **ffmpeg** (with `ffprobe`) on `PATH`, used for the H.264 encode and for trimming and concatenating segments. macOS: `brew install ffmpeg`. Debian/Ubuntu: `apt install ffmpeg`. You can skip it with `--no-transcode` on a short session, at the cost of getting a WebM file named `.mp4`.
 
-## 문제 해결
+## Troubleshooting
 
-- **`postinstall`에서 Chromium 다운로드 실패** → 수동 실행: `npx playwright install chromium`
-- **포트 3000 충돌** → `set PORT=4000 && npm start`
-- **빈 영역/깨진 폰트** → 원본 페이지의 CORS 차단 리소스. rrweb 한계.
-- **메모리 부족** → `node --max-old-space-size=8192 server.mjs`
+| Symptom | Cause |
+|---|---|
+| `Playwright Chromium is not installed` | The postinstall was skipped. Run `npx playwright install chromium`. |
+| `ffmpeg is not on PATH` | Install ffmpeg, or pass `--no-segment` for a short session. |
+| Blank areas or missing fonts in the video | The original page loaded those assets from an origin that blocks them at replay time. This is an rrweb limitation, not something this tool can recover. |
+| Out of memory | Lower `--segment`, or raise the heap: `node --max-old-space-size=8192`. |
+| `Timeout exceeded ... setting frame content` | An occasional flake from `rrvideo` when Chromium is slow to start. Re-run. |
+
+## License
+
+MIT
