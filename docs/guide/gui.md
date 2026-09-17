@@ -6,19 +6,23 @@ npx tapelay serve
 
 Opens a local server on `http://localhost:3000`. Use `--port` to change it.
 
-The whole flow lives on one page: sign in, pick an organization and project, browse replays, choose a range and a format, convert.
-
-## Browsing replays
-
-The list defaults to replays that have at least one error attached, since those are the ones that end up in tickets. The search box takes Sentry's own query syntax, so `user.email:someone@example.com` or `environment:production` work as you would expect.
+The whole flow lives on one page: sign in, pick an organization and project, browse replays, choose a range and a format, convert. The interface is available in English and Korean — switch with the language toggle in the sidebar, shown here in both.
 
 ## Signing in
 
 There are three ways in, and most people never have to do anything for the first two.
 
+> **Shortest path:** paste a token (second option below). It takes about a minute and needs nothing else set up. The **Sign in with Sentry** button is a convenience for a team that will do this often — save it for later, it is not required to start converting today.
+
 **An existing token on the machine.** If you already run `sentry-cli` — and a frontend team uploading source maps does — its token is in `~/.sentryclirc` and is picked up automatically. `SENTRY_AUTH_TOKEN` works the same way. The connect screen never appears.
 
-**Sign in with Sentry.** A button. Click it, approve the code Sentry shows you, and the page connects itself. This is the OAuth device flow, the same one `sentry-cli auth login` uses: no token to create, and the refresh token means you stay signed in.
+**A pasted token.** Otherwise this is the first thing you see: a host field pre-filled with `https://sentry.io`, and a token field. Create one under **Settings → Account → User Auth Tokens** with the `project:read` scope, paste it in, and check *Remember this token on this machine* if you want the connect screen to skip itself next time.
+
+| English | 한국어 |
+|---|---|
+| ![Connect screen, English](/screenshots/connect-en.png) | ![연결 화면, 한국어](/screenshots/connect-ko.png) |
+
+**Sign in with Sentry.** A button that replaces the token field once the server has an OAuth client id. Click it, approve the code Sentry shows you, and the page connects itself. This is the OAuth device flow, the same one `sentry-cli auth login` uses: no token to create, and the refresh token means you stay signed in.
 
 It needs an OAuth client id, because Sentry will not issue one anonymously:
 
@@ -29,9 +33,17 @@ It needs an OAuth client id, because Sentry will not issue one anonymously:
 SENTRY_CLIENT_ID=<your client id> npx tapelay serve
 ```
 
-Two limits worth knowing before you set this up. It needs Sentry 26.1.0 or later — older self-hosted instances return a 404 and the button hides itself. And an unpublished integration only works inside the organization that created it; letting other organizations use the same id means asking Sentry to publish it. So this is a per-team setup, not something that ships switched on.
+Two limits worth knowing before you set this up. It needs Sentry 26.1.0 or later — older self-hosted instances return a 404 and the button hides itself. And an unpublished integration only works inside the organization that created it; letting other organizations use the same id means asking Sentry to publish it. So this is a per-team setup, not something that ships switched on. Without a client id configured, the pasted-token form above is the whole card — there is nothing to fall back *from*.
 
-**A pasted token.** Always available, under *Paste a token instead*. **Settings → Account → User Auth Tokens**, `project:read` scope.
+## Browsing replays and picking a range
+
+Once connected, pick an organization, project, and time window, then search. The list defaults to replays that have at least one error attached, since those are the ones that end up in tickets — toggle *With errors only* off to see everything. The search box takes Sentry's own query syntax, so `user.email:someone@example.com` or `environment:production` work as you would expect.
+
+Click a replay and the range-and-format panel appears below it: start/end in `m:ss`, quick buttons for the last 30 seconds, last minute, or the whole session, a GIF/MP4 toggle, playback speed, and resolution.
+
+| English | 한국어 |
+|---|---|
+| ![Replay list and clip panel, English](/screenshots/clip-en.png) | ![리플레이 목록과 클립 패널, 한국어](/screenshots/clip-ko.png) |
 
 ## Where the token lives
 
@@ -54,3 +66,15 @@ Nothing. The server fetches the replay from Sentry, converts it, and hands back 
 ## Uploading a file instead
 
 The second tab takes a rrweb JSON file by drag and drop, for replays you exported some other way.
+
+| English | 한국어 |
+|---|---|
+| ![File drop tab, English](/screenshots/file-drop-en.png) | ![파일 업로드 탭, 한국어](/screenshots/file-drop-ko.png) |
+
+## Exports
+
+Every finished conversion is kept under **Exports**, with the source URL or filename, the clipped range, speed, size, and a download link.
+
+| English | 한국어 |
+|---|---|
+| ![Exports list, English](/screenshots/exports-en.png) | ![내보낸 파일 목록, 한국어](/screenshots/exports-ko.png) |

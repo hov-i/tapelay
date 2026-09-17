@@ -29,6 +29,8 @@ npx tapelay serve
 
 Then open `http://localhost:3000`. See [The GUI](/guide/gui).
 
+![Picking a replay and a clip range](/screenshots/clip-en.png)
+
 ## Installing
 
 `npx` needs no install. To keep it around:

@@ -4,7 +4,7 @@
 
 ## The problem
 
-Sentry states plainly that [a replay cannot be downloaded](https://sentry.zendesk.com/hc/en-us/articles/26473694604443-Can-I-Download-a-Session-Replay): it is not a video, it is a DOM reconstruction, and it only plays inside the Sentry UI. The request to export replays as video was [opened in 2023 and closed as not planned](https://github.com/getsentry/sentry/issues/44919). The reason people kept asking is right there in the thread: they want to attach a replay to a Jira, Asana or Linear ticket.
+Sentry states plainly that a replay cannot be downloaded: it is not a video, it is a DOM reconstruction, and it only plays inside the Sentry UI. The request to export replays as video was [opened in 2023 and closed as not planned](https://github.com/getsentry/sentry/issues/44919). The reason people kept asking is right there in the thread: they want to attach a replay to a Jira, Asana or Linear ticket.
 
 PostHog is in a similar place. Clip export shipped, but [exporting a whole session as MP4](https://github.com/PostHog/posthog/issues/38807) is still open, and the workaround people describe is starting a screen recorder and waiting.
 

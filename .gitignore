@@ -18,3 +18,4 @@ web/dist/
 
 # desktop app screenshots
 Claude outputs/
+.playwright-mcp/

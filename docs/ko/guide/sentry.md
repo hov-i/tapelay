@@ -1,10 +1,10 @@
 # Sentry URL로 변환
 
-Sentry UI에서 리플레이를 내보내는 공식 방법이 없기 때문에, URL이 현실적인 입구입니다.
+Sentry UI에는 리플레이를 내보내는 공식 방법이 없기 때문에, URL이 가장 현실적인 입구입니다.
 
 ## 토큰 발급
 
-**Settings → Account → User Auth Tokens → Create New Token**에서 `project:read` 권한으로 만듭니다. 환경변수로 넣거나 실행할 때 직접 넘기면 됩니다.
+**Settings → Account → User Auth Tokens → Create New Token**에서 `project:read` 권한으로 토큰을 만듭니다. 환경변수로 넣거나 실행할 때 직접 넘기면 됩니다.
 
 ```bash
 export SENTRY_AUTH_TOKEN=sntryu_...
@@ -14,7 +14,7 @@ npx tapelay <url> --token sntryu_...
 
 ## 지원하는 URL 형태
 
-전부 인식합니다.
+아래 형태를 모두 인식합니다.
 
 ```
 https://acme.sentry.io/replays/<32자리 hex>/
@@ -36,7 +36,7 @@ npx tapelay "https://acme.sentry.io/replays/<id>/?t=262" --to 5:00
 
 ## 내부 동작
 
-API를 두 번 호출합니다.
+Sentry API를 두 번 호출합니다.
 
 ```
 GET /api/0/organizations/{org}/replays/{id}/
