@@ -31,7 +31,6 @@
 - 🖱️ **CLI or GUI** — `npx tapelay <url>` from the terminal, or `npx tapelay serve` for a point-and-click web UI
 - ✂️ **Clip the range that matters** — grab the 30 seconds around the error instead of the whole hour
 - 🔒 **100% local** — your replay, your Sentry token, your machine; nothing is uploaded anywhere
-- 🚫 **No AI in the pipeline** — just the Sentry API, a headless browser, and ffmpeg
 - 🌍 **English & Korean** — both the CLI output and the web UI
 
 <br>
@@ -91,7 +90,7 @@ The interface works in English and Korean — [한국어 문서](https://hov-i.g
 - Node 18 or later
 - `ffmpeg` on your `PATH` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
 
-Chromium is downloaded automatically by Playwright on first run, so the first conversion takes longer than the rest. Everything runs locally, fetched from your own Sentry org with your own token — see the [No-AI Software Directory](https://github.com/thatshubham/no-ai) for more tools built the same way.
+Chromium is downloaded automatically by Playwright on first run, so the first conversion takes longer than the rest. Everything runs locally, fetched from your own Sentry org with your own token.
 
 <br>
 

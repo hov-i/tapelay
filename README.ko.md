@@ -31,7 +31,6 @@
 - 🖱️ **CLI 또는 GUI**: 터미널에서 `npx tapelay <url>`을 쓰거나, `npx tapelay serve`로 클릭만으로 쓸 수 있는 웹 UI를 띄웁니다.
 - ✂️ **필요한 구간만 자르기**: 1시간 전체가 아니라 에러 앞뒤 30초만 뽑아냅니다.
 - 🔒 **완전 로컬 처리**: 여러분의 리플레이, 여러분의 Sentry 토큰, 여러분의 컴퓨터에서만 처리되며 어디로도 업로드되지 않습니다.
-- 🚫 **AI 없는 변환 파이프라인**: Sentry API와 헤드리스 브라우저, ffmpeg만 사용합니다.
 - 🌍 **영어와 한국어 지원**: CLI 출력과 웹 UI 모두 지원합니다.
 
 <br>
@@ -91,7 +90,7 @@ Sentry 계정이 마땅치 않은 경우에는 두 번째 탭을 쓰면 됩니�
 - Node 18 이상
 - `PATH`에 `ffmpeg` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
 
-Chromium은 Playwright가 최초 실행 시 자동으로 받아오므로 첫 변환만 조금 더 걸립니다. 모든 처리는 로컬에서 일어나며, 여러분의 Sentry 조직에서 여러분의 토큰으로 가져온 리플레이를 여러분의 컴퓨터에서만 변환합니다. 같은 철학을 가진 도구들은 [No-AI Software Directory](https://github.com/thatshubham/no-ai)에서 확인할 수 있습니다.
+Chromium은 Playwright가 최초 실행 시 자동으로 받아오므로 첫 변환만 조금 더 걸립니다. 모든 처리는 로컬에서 일어나며, 여러분의 Sentry 조직에서 여러분의 토큰으로 가져온 리플레이를 여러분의 컴퓨터에서만 변환합니다.
 
 <br>
 
