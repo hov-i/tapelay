@@ -1,8 +1,40 @@
-# tapelay
+<h1 align="center">
+  <a href="https://hov-i.github.io/tapelay/">
+    <img src="https://raw.githubusercontent.com/hov-i/tapelay/main/docs/public/logo.svg" width="72" alt="tapelay logo">
+  </a>
+  <br>
+  tapelay
+</h1>
 
-Turn a Sentry (or PostHog) session replay into an MP4 or GIF, on your own machine.
+<p align="center">
+  Turn a Sentry (or PostHog) session replay into an MP4 or GIF, on your own machine.
+</p>
 
-![Picking a replay and a clip range](https://raw.githubusercontent.com/hov-i/tapelay/main/docs/public/screenshots/clip-en.png)
+<p align="center">
+  <a href="https://github.com/hov-i/tapelay/actions/workflows/docs.yml"><img src="https://img.shields.io/github/actions/workflow/status/hov-i/tapelay/docs.yml?label=docs&color=171717" alt="Docs build status"></a>
+  <a href="./package.json"><img src="https://img.shields.io/github/package-json/node/hov-i/tapelay?color=171717" alt="Node version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-171717" alt="MIT License"></a>
+  <a href="https://github.com/hov-i/tapelay/stargazers"><img src="https://img.shields.io/github/stars/hov-i/tapelay?color=171717" alt="GitHub stars"></a>
+</p>
+
+<div align="center">
+
+**`English`** · [**`한국어`**](./README.ko.md)
+
+</div>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hov-i/tapelay/main/docs/public/screenshots/clip-en.png" alt="Picking a replay and a clip range" width="720">
+</p>
+
+- 🎬 **rrweb → MP4/GIF** — turns a Sentry or PostHog session replay into a file you can actually attach somewhere
+- 🖱️ **CLI or GUI** — `npx tapelay <url>` from the terminal, or `npx tapelay serve` for a point-and-click web UI
+- ✂️ **Clip the range that matters** — grab the 30 seconds around the error instead of the whole hour
+- 🔒 **100% local** — your replay, your Sentry token, your machine; nothing is uploaded anywhere
+- 🚫 **No AI in the pipeline** — just the Sentry API, a headless browser, and ffmpeg
+- 🌍 **English & Korean** — both the CLI output and the web UI
+
+<br>
 
 ## Why this exists
 
@@ -17,9 +49,9 @@ Meanwhile the people who need to see the bug — a PM, a designer, QA, a client 
 - **Hand it to QA or a client** with no Sentry account, no login, nothing installed on their end.
 - **Attach it to a PR** as proof the fix addresses the recorded behavior.
 
-Everything runs locally: the replay is fetched from your own Sentry org with your own token, converted on your machine, and never uploaded anywhere. No AI in the pipeline either — just the Sentry API, a headless browser, and ffmpeg. See the [No-AI Software Directory](https://github.com/thatshubham/no-ai) for more tools built the same way.
+<br>
 
-## Quick start
+## 🚀 Quick start
 
 ```bash
 export SENTRY_AUTH_TOKEN=...   # Settings > Account > User Auth Tokens, project:read scope
@@ -28,7 +60,7 @@ npx tapelay https://acme.sentry.io/replays/<id>/ bug-1234.mp4 --from 4:20 --to 4
 
 Copy the replay URL out of Sentry, name the output, drag it into the ticket.
 
-## Or click through it — the web UI
+## 🖱️ Or click through it — the web UI
 
 ```bash
 npx tapelay serve   # open http://localhost:3000
@@ -52,14 +84,18 @@ No Sentry account handy? The second tab takes an rrweb JSON file by drag and dro
 
 The interface works in English and Korean — [한국어 문서](https://hov-i.github.io/tapelay/ko/) has the same screenshots in Korean.
 
-## Requirements
+<br>
+
+## 🔧 Requirements
 
 - Node 18 or later
 - `ffmpeg` on your `PATH` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
 
-Chromium is downloaded automatically by Playwright on first run, so the first conversion takes longer than the rest.
+Chromium is downloaded automatically by Playwright on first run, so the first conversion takes longer than the rest. Everything runs locally, fetched from your own Sentry org with your own token — see the [No-AI Software Directory](https://github.com/thatshubham/no-ai) for more tools built the same way.
 
-## Documentation
+<br>
+
+## 📖 Documentation
 
 **[Read the full documentation →](https://hov-i.github.io/tapelay/)**
 
@@ -69,6 +105,8 @@ Chromium is downloaded automatically by Playwright on first run, so the first co
 - [Clips and GIFs](https://hov-i.github.io/tapelay/guide/clips) — clipping a range, GIF options
 - [CLI reference](https://hov-i.github.io/tapelay/reference/cli) · [Node API](https://hov-i.github.io/tapelay/reference/api) · [How it works](https://hov-i.github.io/tapelay/reference/how-it-works) · [Troubleshooting](https://hov-i.github.io/tapelay/reference/troubleshooting)
 
-## License
+<br>
+
+## 📄 License
 
 MIT

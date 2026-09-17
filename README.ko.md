@@ -1,10 +1,40 @@
-# tapelay
+<h1 align="center">
+  <a href="https://hov-i.github.io/tapelay/ko/">
+    <img src="https://raw.githubusercontent.com/hov-i/tapelay/main/docs/public/logo.svg" width="72" alt="tapelay 로고">
+  </a>
+  <br>
+  tapelay
+</h1>
 
-[English](./README.md)
+<p align="center">
+  Sentry(또는 PostHog) 세션 리플레이를 여러분의 컴퓨터에서 MP4나 GIF로 바꿔줍니다.
+</p>
 
-Sentry(또는 PostHog) 세션 리플레이를 여러분의 컴퓨터에서 MP4나 GIF로 바꿔줍니다.
+<p align="center">
+  <a href="https://github.com/hov-i/tapelay/actions/workflows/docs.yml"><img src="https://img.shields.io/github/actions/workflow/status/hov-i/tapelay/docs.yml?label=docs&color=171717" alt="문서 빌드 상태"></a>
+  <a href="./package.json"><img src="https://img.shields.io/github/package-json/node/hov-i/tapelay?color=171717" alt="Node 버전"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-171717" alt="MIT 라이선스"></a>
+  <a href="https://github.com/hov-i/tapelay/stargazers"><img src="https://img.shields.io/github/stars/hov-i/tapelay?color=171717" alt="GitHub 스타"></a>
+</p>
 
-![리플레이와 클립 구간 선택](https://raw.githubusercontent.com/hov-i/tapelay/main/docs/public/screenshots/clip-ko.png)
+<div align="center">
+
+[**`English`**](./README.md) · **`한국어`**
+
+</div>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hov-i/tapelay/main/docs/public/screenshots/clip-ko.png" alt="리플레이와 클립 구간 선택" width="720">
+</p>
+
+- 🎬 **rrweb → MP4/GIF**: Sentry나 PostHog 세션 리플레이를 실제로 첨부할 수 있는 파일로 바꿉니다.
+- 🖱️ **CLI 또는 GUI**: 터미널에서 `npx tapelay <url>`을 쓰거나, `npx tapelay serve`로 클릭만으로 쓸 수 있는 웹 UI를 띄웁니다.
+- ✂️ **필요한 구간만 자르기**: 1시간 전체가 아니라 에러 앞뒤 30초만 뽑아냅니다.
+- 🔒 **완전 로컬 처리**: 여러분의 리플레이, 여러분의 Sentry 토큰, 여러분의 컴퓨터에서만 처리되며 어디로도 업로드되지 않습니다.
+- 🚫 **AI 없는 변환 파이프라인**: Sentry API와 헤드리스 브라우저, ffmpeg만 사용합니다.
+- 🌍 **영어와 한국어 지원**: CLI 출력과 웹 UI 모두 지원합니다.
+
+<br>
 
 ## 만든 이유
 
@@ -19,9 +49,9 @@ Sentry는 리플레이를 다운로드할 수 없습니다. 영상이 아니라 
 - **QA나 고객사에도 전달할 수 있습니다.** Sentry 계정도, 로그인도, 별도 설치도 필요 없습니다.
 - **PR에 첨부할 수도 있습니다.** 수정 사항이 녹화된 버그 상황을 실제로 해결했다는 증거로 씁니다.
 
-모든 처리는 로컬에서 일어납니다. 리플레이는 여러분의 Sentry 조직에서 여러분의 토큰으로 가져와 여러분의 컴퓨터에서 변환되며, 어디로도 업로드되지 않습니다. 변환 과정에는 AI가 전혀 관여하지 않습니다. 사용하는 것은 Sentry API와 헤드리스 브라우저, ffmpeg뿐입니다. 같은 철학을 가진 도구들은 [No-AI Software Directory](https://github.com/thatshubham/no-ai)에서 확인할 수 있습니다.
+<br>
 
-## 빠른 시작
+## 🚀 빠른 시작
 
 ```bash
 export SENTRY_AUTH_TOKEN=...   # Settings > Account > User Auth Tokens, project:read 권한
@@ -30,7 +60,7 @@ npx tapelay https://acme.sentry.io/replays/<id>/ bug-1234.mp4 --from 4:20 --to 4
 
 Sentry에서 리플레이 URL을 복사하고, 출력 이름을 정하고, 티켓에 드래그하면 끝입니다.
 
-## 웹 UI로 클릭만 해서 변환하기
+## 🖱️ 웹 UI로 클릭만 해서 변환하기
 
 ```bash
 npx tapelay serve   # http://localhost:3000 열기
@@ -54,14 +84,18 @@ Sentry 계정이 마땅치 않은 경우에는 두 번째 탭을 쓰면 됩니�
 
 인터페이스는 영어와 한국어를 모두 지원합니다. [English docs](https://hov-i.github.io/tapelay/)에서 같은 화면을 영어로 볼 수 있습니다.
 
-## 요구 사항
+<br>
+
+## 🔧 요구 사항
 
 - Node 18 이상
 - `PATH`에 `ffmpeg` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
 
-Chromium은 Playwright가 최초 실행 시 자동으로 받아오므로 첫 변환만 조금 더 걸립니다.
+Chromium은 Playwright가 최초 실행 시 자동으로 받아오므로 첫 변환만 조금 더 걸립니다. 모든 처리는 로컬에서 일어나며, 여러분의 Sentry 조직에서 여러분의 토큰으로 가져온 리플레이를 여러분의 컴퓨터에서만 변환합니다. 같은 철학을 가진 도구들은 [No-AI Software Directory](https://github.com/thatshubham/no-ai)에서 확인할 수 있습니다.
 
-## 문서
+<br>
+
+## 📖 문서
 
 **[전체 문서 보기 →](https://hov-i.github.io/tapelay/ko/)**
 
@@ -71,6 +105,8 @@ Chromium은 Playwright가 최초 실행 시 자동으로 받아오므로 첫 변
 - [구간 클립과 GIF](https://hov-i.github.io/tapelay/ko/guide/clips): 구간 자르기, GIF 옵션
 - [CLI 레퍼런스](https://hov-i.github.io/tapelay/ko/reference/cli) · [Node API](https://hov-i.github.io/tapelay/ko/reference/api) · [동작 원리](https://hov-i.github.io/tapelay/ko/reference/how-it-works) · [문제 해결](https://hov-i.github.io/tapelay/ko/reference/troubleshooting)
 
-## 라이선스
+<br>
+
+## 📄 라이선스
 
 MIT
