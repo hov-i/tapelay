@@ -62,16 +62,17 @@ const koSidebar = [
 export default defineConfig({
   title: 'tapelay',
   description: 'Convert Sentry session replays into MP4 or GIF, locally.',
+  base: '/tapelay/',
   cleanUrls: true,
   lastUpdated: true,
   markdown: { anchor: { slugify: nfcSlugify } },
 
   head: [
-    ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
-    ['link', { rel: 'alternate icon', href: '/favicon.ico', sizes: '16x16 32x32' }],
-    ['link', { rel: 'apple-touch-icon', href: '/icon-180.png' }],
+    ['link', { rel: 'icon', href: '/tapelay/favicon.svg', type: 'image/svg+xml' }],
+    ['link', { rel: 'alternate icon', href: '/tapelay/favicon.ico', sizes: '16x16 32x32' }],
+    ['link', { rel: 'apple-touch-icon', href: '/tapelay/icon-180.png' }],
     ['meta', { name: 'theme-color', content: '#171717' }],
-    ['meta', { property: 'og:image', content: '/icon-512.png' }],
+    ['meta', { property: 'og:image', content: '/tapelay/icon-512.png' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'tapelay' }],
     [
