@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -88,8 +88,22 @@ Options
   --no-transcode   Skip H.264 encoding and emit Playwright's raw VP8/WebM.
                    Faster, but the file will not open in QuickTime, PowerPoint
                    or on iOS. Only useful if you have no ffmpeg.
+  --out-dir <dir>  Write outputs into this directory instead of alongside the
+                   input. Applies to auto-generated filenames too.
+  --json           Print machine-readable results as one JSON array on stdout
+                   and nothing else. All progress and log output moves to
+                   stderr, so this is safe to pipe: tapelay ... --json | jq
   -h, --help       Show this help
   -v, --version    Show version
+
+Batch
+  --batch <file>   Convert every line of <file> instead of a single input.
+                   Each line is a Sentry replay URL or a path to a JSON file;
+                   blank lines and lines starting with # are skipped. Options
+                   like --speed, --from and --out-dir apply to every item, and
+                   output filenames are auto-generated (an explicit output
+                   argument is ignored in batch mode). One failure does not
+                   stop the rest; check the summary or --json exit code.
 
 Input
   Any JSON containing rrweb events. Sentry replay exports, PostHog exports,
@@ -100,6 +114,8 @@ Examples
   tapelay replay.json
   tapelay replay.json out.mp4 --speed 1 --scale 1
   tapelay https://acme.sentry.io/replays/<id>/ bug-1234.mp4 --from 4:20 --to 4:50
+  tapelay https://acme.sentry.io/replays/<id>/ --json | jq -r .outPath
+  tapelay --batch urls.txt --out-dir clips --from 4:20 --to 4:50
   tapelay serve --port 8080
 
 Requirements
@@ -144,6 +160,15 @@ function chromiumMissing() {
   }
 }
 
+// Thrown for a single item's conversion failure. In batch mode this is caught
+// per-item so one bad URL does not stop the rest; outside batch mode it is
+// caught once at the top level and treated the same as fail() below.
+class ItemError extends Error {}
+
+function itemFail(message, hint) {
+  throw new ItemError(hint ? `${message} ${hint}` : message)
+}
+
 function fail(message, hint) {
   console.error(`\n✗ ${message}`)
   if (hint) console.error(`  ${hint}`)
@@ -155,75 +180,78 @@ async function runServe(args) {
   await import('./server.mjs')
 }
 
-async function runConvert(args) {
-  const input = args._[0]
+// Converts one item (a Sentry URL or a JSON file path). Used directly for a
+// single conversion and in a loop for --batch. All human-facing progress
+// goes through `log`, which the caller points at stderr in --json/--batch
+// mode so stdout stays clean for machine output. Throws ItemError for
+// anything specific to this one item (bad input, ffmpeg missing for this
+// session, GIF too long); the caller decides whether that aborts the whole
+// run or is just recorded and skipped.
+async function runConvert(input, explicitOutput, args, log) {
   const replay = parseReplayUrl(input)
   if (!replay && /^https?:\/\//i.test(input)) {
-    fail(
+    itemFail(
       `That looks like a URL but not a Sentry replay URL: ${input}`,
       'Expected something like https://<org>.sentry.io/replays/<32-hex-id>/',
     )
   }
   const format = args.gif ? 'gif' : 'mp4'
+  const autoName = replay ? `${replay.replayId.slice(0, 8)}.${format}` : path.basename(input).replace(/\.json$/i, `.${format}`)
+  const outDir = args['out-dir'] ? path.resolve(args['out-dir']) : null
   const outPath = path.resolve(
-    args._[1] ||
-      (replay ? `${replay.replayId.slice(0, 8)}.${format}` : input.replace(/\.json$/i, `.${format}`)),
+    explicitOutput
+      ? (outDir ? path.join(outDir, path.basename(explicitOutput)) : explicitOutput)
+      : (outDir ? path.join(outDir, autoName) : autoName),
   )
+  await mkdir(path.dirname(outPath), { recursive: true })
 
   const speed = Number(args.speed ?? DEFAULTS.speed)
   const scale = Number(args.scale ?? DEFAULTS.scale)
-  if (!Number.isFinite(speed) || speed <= 0) fail(`--speed must be a positive number, got "${args.speed}"`)
-  if (!Number.isFinite(scale) || scale < 0.25 || scale > 1) fail(`--scale must be between 0.25 and 1, got "${args.scale}"`)
+  if (!Number.isFinite(speed) || speed <= 0) itemFail(`--speed must be a positive number, got "${args.speed}"`)
+  if (!Number.isFinite(scale) || scale < 0.25 || scale > 1) itemFail(`--scale must be between 0.25 and 1, got "${args.scale}"`)
 
   const segmentMs = Number(args.segment ?? DEFAULTS.segment) * 60 * 1000
   const thresholdMs = args['no-segment']
     ? Number.POSITIVE_INFINITY
     : Number(args.threshold ?? DEFAULTS.threshold) * 60 * 1000
 
-  if (chromiumMissing()) {
-    fail(
-      'Playwright Chromium is not installed.',
-      'Run: npx playwright install chromium',
-    )
-  }
-
   let allEvents
   if (replay) {
     try {
       const creds = await resolveCredentials({ token: args.token === true ? null : args.token })
       if (creds.source !== 'flag' && creds.source !== 'none') {
-        console.log(`🔑 using the token from ${creds.source === 'sentry-cli' ? sentryCliPath() : creds.source}`)
+        log(`🔑 using the token from ${creds.source === 'sentry-cli' ? sentryCliPath() : creds.source}`)
       }
       const fetched = await fetchReplayEvents({
         ...replay,
         token: creds.token,
-        onLog: (m) => console.log(`↓ ${m}`),
+        onLog: (m) => log(`↓ ${m}`),
       })
       allEvents = fetched.events
     } catch (err) {
-      fail(err.message)
+      itemFail(err.message)
     }
   } else {
     const absInput = path.resolve(input)
-    if (!existsSync(absInput)) fail(`Input file not found: ${input}`)
-    console.log(`📂 ${input}`)
+    if (!existsSync(absInput)) itemFail(`Input file not found: ${input}`)
+    log(`📂 ${input}`)
     let raw
     try {
       raw = JSON.parse(await readFile(absInput, 'utf8'))
     } catch (err) {
-      fail(`Could not parse ${input} as JSON.`, err.message)
+      itemFail(`Could not parse ${input} as JSON.`, err.message)
     }
     allEvents = normalizeEvents(raw)
   }
 
   if (allEvents.length < 2) {
-    fail(
+    itemFail(
       'No rrweb events found.',
       'Expected an event array, or an object wrapping one under "events", "segments" or "data".',
     )
   }
   const sessionMs = allEvents[allEvents.length - 1].timestamp - allEvents[0].timestamp
-  console.log(`✓ ${allEvents.length} events | session ${fmt(sessionMs)}`)
+  log(`✓ ${allEvents.length} events | session ${fmt(sessionMs)}`)
 
   // A clip range keeps the events from the preceding FullSnapshot, so the
   // rendered video is longer than the window; keepWindowMs trims it back down.
@@ -238,10 +266,10 @@ async function runConvert(args) {
       events = sliced.events
       keepWindowMs = sliced.windowMs
     } catch (err) {
-      fail(err.message)
+      itemFail(err.message)
     }
     const label = args.from == null && replay?.tSec != null ? " (from the URL's ?t=)" : ''
-    console.log(`✂ ${fmt(fromMs ?? 0)} ~ ${fmt((fromMs ?? 0) + keepWindowMs)}${label}`)
+    log(`✂ ${fmt(fromMs ?? 0)} ~ ${fmt((fromMs ?? 0) + keepWindowMs)}${label}`)
   }
 
   const totalMs = keepWindowMs ?? sessionMs
@@ -249,14 +277,14 @@ async function runConvert(args) {
   const transcode = !args['no-transcode']
 
   if (format === 'gif' && totalMs > 120_000) {
-    fail(
+    itemFail(
       `GIF for ${fmt(totalMs)} of session would be enormous.`,
       'Narrow it with --from/--to, or drop --gif and take the MP4.',
     )
   }
 
   if (keepWindowMs != null && !transcode) {
-    fail('--no-transcode cannot be combined with --from/--to.', 'Trimming a clip requires re-encoding.')
+    itemFail('--no-transcode cannot be combined with --from/--to.', 'Trimming a clip requires re-encoding.')
   }
 
   // Playwright records VP8/WebM, so ffmpeg is what turns the result into a file
@@ -265,14 +293,14 @@ async function runConvert(args) {
     const why = willSegment
       ? `This session is ${(totalMs / 60000).toFixed(0)} minutes long, so it has to be converted in segments and stitched together`
       : 'The recording comes out of Playwright as VP8/WebM and has to be encoded to H.264'
-    fail(
+    itemFail(
       `${why}, but ffmpeg is not on PATH.`,
       'Install it (macOS: brew install ffmpeg, Debian/Ubuntu: apt install ffmpeg).' +
         (willSegment ? '' : ' Or pass --no-transcode to keep the raw WebM.'),
     )
   }
   if (!transcode && willSegment) {
-    fail('--no-transcode cannot be combined with segmented conversion.', 'Add --no-segment, or drop --no-transcode.')
+    itemFail('--no-transcode cannot be combined with segmented conversion.', 'Add --no-segment, or drop --no-transcode.')
   }
 
   let lastLogAt = 0
@@ -281,15 +309,14 @@ async function runConvert(args) {
     lastLogAt = Date.now()
     const pct = Math.min(100, (wallMs / replayMs) * 100).toFixed(0)
     const seg = segments > 1 ? ` | segment ${segment}/${segments}` : ''
+    if (args.json) return // percent ticks are noisy in a batch/json run; init + final summary are enough
     process.stdout.write(`\r⏺  ${pct}% | ${(wallMs / 1000).toFixed(1)}s${seg}   `)
   }
   const onInit = ({ srcW, srcH, totalMs: t, replayMs, segments }) => {
     const seg = segments > 1 ? ` | ${segments} segments` : ''
-    console.log(
-      `📏 ${srcW}×${srcH} | session ${(t / 1000).toFixed(1)}s | expected ${(replayMs / 1000).toFixed(1)}s${seg}`,
-    )
+    log(`📏 ${srcW}×${srcH} | session ${(t / 1000).toFixed(1)}s | expected ${(replayMs / 1000).toFixed(1)}s${seg}`)
   }
-  const onLog = (m) => console.log('\n' + m)
+  const onLog = (m) => log('\n' + m)
 
   const opts = {
     events, outPath, speed, scale, transcode, keepWindowMs, format,
@@ -304,17 +331,94 @@ async function runConvert(args) {
       ? await convertEventsSegmented({ ...opts, segmentMs, segmentThresholdMs: thresholdMs })
       : await convertEvents(opts)
   } catch (err) {
-    process.stdout.write('\n')
+    if (!args.json) process.stdout.write('\n')
     if (/Executable doesn't exist|playwright install/i.test(err.message || '')) {
-      fail('Playwright Chromium is not installed.', 'Run: npx playwright install chromium')
+      itemFail('Playwright Chromium is not installed.', 'Run: npx playwright install chromium')
     }
-    fail(err.message || String(err))
+    itemFail(err.message || String(err))
   }
 
-  process.stdout.write('\n')
-  console.log(
-    `✅ ${outPath} (${(result.size / 1024 / 1024).toFixed(1)} MB, ${(result.wallMs / 1000).toFixed(1)}s)`,
-  )
+  if (!args.json) process.stdout.write('\n')
+  log(`✅ ${outPath} (${(result.size / 1024 / 1024).toFixed(1)} MB, ${(result.wallMs / 1000).toFixed(1)}s)`)
+
+  return {
+    input,
+    outPath,
+    format,
+    sizeBytes: result.size,
+    wallMs: result.wallMs,
+    sessionMs,
+    clipMs: keepWindowMs ?? sessionMs,
+    width: result.outW,
+    height: result.outH,
+  }
+}
+
+// --json prints one JSON array on stdout at the very end, so every
+// human-facing line in between goes to stderr instead of stdout.
+function makeLogger(args) {
+  return args.json ? (m) => console.error(m) : (m) => console.log(m)
+}
+
+async function readBatchInputs(file) {
+  let raw
+  try {
+    raw = await readFile(path.resolve(file), 'utf8')
+  } catch (err) {
+    fail(`Could not read batch file: ${file}`, err.message)
+  }
+  const lines = raw
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'))
+  if (lines.length === 0) fail(`Batch file has no entries: ${file}`)
+  return lines
+}
+
+async function runBatch(args) {
+  const inputs = await readBatchInputs(args.batch)
+  const log = makeLogger(args)
+  const results = []
+  let failures = 0
+
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]
+    log(`\n[${i + 1}/${inputs.length}] ${input}`)
+    try {
+      results.push({ ok: true, ...(await runConvert(input, null, args, log)) })
+    } catch (err) {
+      failures++
+      const message = err instanceof ItemError ? err.message : err.message || String(err)
+      log(`✗ ${message}`)
+      results.push({ ok: false, input, error: message })
+    }
+  }
+
+  if (args.json) {
+    console.log(JSON.stringify(results, null, 2))
+  } else {
+    console.log(`\n${inputs.length - failures}/${inputs.length} converted` + (failures ? `, ${failures} failed` : ''))
+  }
+  if (failures > 0) process.exitCode = 1
+}
+
+async function runSingle(args) {
+  const log = makeLogger(args)
+  let result
+  try {
+    result = { ok: true, ...(await runConvert(args._[0], args._[1], args, log)) }
+  } catch (err) {
+    if (err instanceof ItemError) {
+      if (args.json) {
+        console.log(JSON.stringify({ ok: false, input: args._[0], error: err.message }, null, 2))
+        process.exitCode = 1
+        return
+      }
+      fail(err.message)
+    }
+    throw err
+  }
+  if (args.json) console.log(JSON.stringify(result, null, 2))
 }
 
 const args = parseArgs(process.argv.slice(2))
@@ -323,9 +427,16 @@ if (args.version) {
   console.log(pkg.version)
 } else if (args._[0] === 'serve') {
   await runServe(args)
-} else if (args.help || !args._[0]) {
+} else if (args.help || (!args._[0] && !args.batch)) {
   usage()
   process.exit(args.help ? 0 : 1)
 } else {
-  await runConvert(args)
+  if (chromiumMissing()) {
+    fail('Playwright Chromium is not installed.', 'Run: npx playwright install chromium')
+  }
+  if (args.batch) {
+    await runBatch(args)
+  } else {
+    await runSingle(args)
+  }
 }
