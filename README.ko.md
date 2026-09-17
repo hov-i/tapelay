@@ -37,7 +37,7 @@
 
 ## 만든 이유
 
-Sentry는 리플레이를 다운로드할 수 없습니다. 영상이 아니라 DOM을 재현한 것이라 Sentry UI 안에서만 재생되기 때문입니다. 영상으로 내보내달라는 요청도 [not planned로 닫혔습니다](https://github.com/getsentry/sentry/issues/44919). PostHog도 사정은 비슷해서, 세션 전체를 MP4로 내보내는 기능은 [아직 열린 이슈로 남아 있습니다](https://github.com/PostHog/posthog/issues/38807).
+Sentry는 [리플레이를 다운로드할 수 없습니다](https://www.sentry.help/en/articles/13963969-can-i-download-a-session-replay). 영상이 아니라 DOM을 재현한 것이라 Sentry UI 안에서만 재생되기 때문입니다. 영상으로 내보내달라는 요청도 [not planned로 닫혔습니다](https://github.com/getsentry/sentry/issues/44919). PostHog도 사정은 비슷해서, 세션 전체를 MP4로 내보내는 기능은 [아직 열린 이슈로 남아 있습니다](https://github.com/PostHog/posthog/issues/38807).
 
 그러는 동안 버그를 정작 확인해야 하는 사람들, 그러니까 PM, 디자이너, QA, 고객사는 보통 Sentry 계정이 없습니다. 그래서 티켓에 리플레이 링크만 붙여 놓으면 그들은 로그인 화면만 마주하게 됩니다.
 

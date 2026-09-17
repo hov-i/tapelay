@@ -4,7 +4,7 @@
 
 ## 문제
 
-Sentry는 리플레이를 다운로드할 수 없다고 명시합니다. 영상이 아니라 DOM을 재현한 것이라 Sentry UI 안에서만 재생된다는 이유입니다. 리플레이를 영상으로 내보내달라는 요청은 [2023년에 올라와 not planned로 닫혔습니다](https://github.com/getsentry/sentry/issues/44919). 사람들이 계속 요청한 이유는 그 스레드에 그대로 적혀 있습니다. Jira, Asana, Linear 같은 티켓에 리플레이를 붙이고 싶다는 것입니다.
+Sentry는 [리플레이를 다운로드할 수 없다고 명시합니다](https://www.sentry.help/en/articles/13963969-can-i-download-a-session-replay). 영상이 아니라 DOM을 재현한 것이라 Sentry UI 안에서만 재생된다는 이유입니다. 리플레이를 영상으로 내보내달라는 요청은 [2023년에 올라와 not planned로 닫혔습니다](https://github.com/getsentry/sentry/issues/44919). 사람들이 계속 요청한 이유는 그 스레드에 그대로 적혀 있습니다. Jira, Asana, Linear 같은 티켓에 리플레이를 붙이고 싶다는 것입니다.
 
 PostHog도 사정은 비슷합니다. 클립 export 기능은 나왔지만 [세션 전체를 MP4로 내보내는 기능](https://github.com/PostHog/posthog/issues/38807)은 아직 열려 있는 이슈이고, 거기 적힌 우회법도 화면 녹화기를 켜고 기다리는 것뿐입니다.
 

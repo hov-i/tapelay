@@ -37,7 +37,7 @@
 
 ## Why this exists
 
-Sentry does not let you download a replay — it is a DOM reconstruction that only plays inside the Sentry UI, and the request to export it as video was [closed as not planned](https://github.com/getsentry/sentry/issues/44919). PostHog is in the same spot: exporting a full session as MP4 is [still an open issue](https://github.com/PostHog/posthog/issues/38807).
+Sentry [does not let you download a replay](https://www.sentry.help/en/articles/13963969-can-i-download-a-session-replay) — it is a DOM reconstruction that only plays inside the Sentry UI, and the request to export it as video was [closed as not planned](https://github.com/getsentry/sentry/issues/44919). PostHog is in the same spot: exporting a full session as MP4 is [still an open issue](https://github.com/PostHog/posthog/issues/38807).
 
 Meanwhile the people who need to see the bug — a PM, a designer, QA, a client — usually do not have a Sentry seat, and pasting a replay link into a ticket just gives them a login wall.
 
