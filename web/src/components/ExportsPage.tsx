@@ -97,7 +97,7 @@ export function ExportsPage() {
               </div>
               <div className="flex gap-2">
                 <Button asChild size="sm" variant="outline">
-                  <a href={`/api/exports/${item.id}/download`} download>
+                  <a href={`api/exports/${item.id}/download`} download>
                     <Download /> {t.exports.download}
                   </a>
                 </Button>
