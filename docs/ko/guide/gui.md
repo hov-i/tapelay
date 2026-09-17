@@ -78,3 +78,30 @@ SENTRY_AUTH_TOKEN=sntryu_... npx tapelay serve
 | English | 한국어 |
 |---|---|
 | ![내보낸 파일 목록, 영어](/screenshots/exports-en.png) | ![내보낸 파일 목록, 한국어](/screenshots/exports-ko.png) |
+
+## 리버스 프록시 뒤에서 서빙하기
+
+`mydomain.com`이 아니라 `mydomain.com/tapelay/`처럼 하위 경로로 서빙하려면, 그 경로를 반영해서 웹 UI를 다시 빌드해야 합니다. 그렇지 않으면 JS/CSS 요청이 하위 경로가 아니라 도메인 루트를 찾다가 404가 납니다.
+
+```bash
+git clone https://github.com/hov-i/tapelay.git
+cd tapelay
+npm install
+TAPELAY_BASE_PATH=/tapelay/ npm run build:web
+pm2 start "node server.mjs" --name tapelay
+```
+
+그다음 nginx(또는 다른 리버스 프록시)에서 해당 경로를 연결합니다.
+
+```nginx
+location /tapelay/ {
+    proxy_pass http://127.0.0.1:3000/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+`location` 경로와 `TAPELAY_BASE_PATH` 값은 끝에 붙는 슬래시까지 정확히 같아야 합니다. tapelay를 자체 도메인 루트에서 그대로 쓴다면 아무것도 바꿀 필요가 없습니다 — `TAPELAY_BASE_PATH`의 기본값은 `/`입니다.

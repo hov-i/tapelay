@@ -78,3 +78,30 @@ Every finished conversion is kept under **Exports**, with the source URL or file
 | English | 한국어 |
 |---|---|
 | ![Exports list, English](/screenshots/exports-en.png) | ![내보낸 파일 목록, 한국어](/screenshots/exports-ko.png) |
+
+## Running behind a reverse proxy
+
+Serving tapelay under a sub-path — `mydomain.com/tapelay/` instead of its own domain — needs the web UI rebuilt with that path baked in, or the JS/CSS requests 404 against the domain root instead:
+
+```bash
+git clone https://github.com/hov-i/tapelay.git
+cd tapelay
+npm install
+TAPELAY_BASE_PATH=/tapelay/ npm run build:web
+pm2 start "node server.mjs" --name tapelay
+```
+
+Then point nginx (or any reverse proxy) at it:
+
+```nginx
+location /tapelay/ {
+    proxy_pass http://127.0.0.1:3000/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Both the `location` path and `TAPELAY_BASE_PATH` need the same value, trailing slash included. Running tapelay at its own domain root needs no changes — `TAPELAY_BASE_PATH` defaults to `/`.

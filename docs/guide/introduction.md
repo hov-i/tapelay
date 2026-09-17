@@ -24,7 +24,7 @@ You give it a replay URL. It pulls the recording through the Sentry API, replays
 
 ## Requirements
 
-- Node 18 or newer
+- Node 20 or newer
 - Chromium, which Playwright downloads on first install
 - ffmpeg and ffprobe on `PATH`
 

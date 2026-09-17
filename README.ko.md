@@ -87,7 +87,7 @@ Sentry 계정이 마땅치 않은 경우에는 두 번째 탭을 쓰면 됩니�
 
 ## 🔧 요구 사항
 
-- Node 18 이상
+- Node 20 이상
 - `PATH`에 `ffmpeg` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
 
 Chromium은 Playwright가 최초 실행 시 자동으로 받아오므로 첫 변환만 조금 더 걸립니다. 모든 처리는 로컬에서 일어나며, 여러분의 Sentry 조직에서 여러분의 토큰으로 가져온 리플레이를 여러분의 컴퓨터에서만 변환합니다.

@@ -24,7 +24,7 @@ PostHog도 사정은 비슷합니다. 클립 export 기능은 나왔지만 [세�
 
 ## 요구사항
 
-- Node 18 이상
+- Node 20 이상
 - Chromium (Playwright가 최초 설치 시 내려받습니다)
 - `PATH`에 ffmpeg와 ffprobe
 

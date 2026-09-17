@@ -1,6 +1,6 @@
 {
   "name": "tapelay",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Turn a Sentry session replay into an MP4 or GIF on your own machine. Paste the replay URL, clip the range around the error, hand it to someone who cannot open Sentry. rrweb session recording to video.",
   "type": "module",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "README.ko.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "keywords": [
     "rrweb",

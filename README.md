@@ -87,7 +87,7 @@ The interface works in English and Korean — [한국어 문서](https://hov-i.g
 
 ## 🔧 Requirements
 
-- Node 18 or later
+- Node 20 or later
 - `ffmpeg` on your `PATH` (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`)
 
 Chromium is downloaded automatically by Playwright on first run, so the first conversion takes longer than the rest. Everything runs locally, fetched from your own Sentry org with your own token.
