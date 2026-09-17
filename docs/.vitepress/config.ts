@@ -1,8 +1,10 @@
 import { defineConfig } from 'vitepress'
 
-// VitePress(mdit-vue) 기본 slugify는 NFKD 정규화라 한글 음절을 자모 분리(NFD) 형태의
-// 헤딩 id로 만든다. 브라우저 URL hash는 NFC라 바이트가 어긋나 한글 헤딩으로 스크롤이
-// 안 된다. mdit-vue와 같은 특수문자·숫자 prefix 처리에 정규화만 NFC로 바꾼다.
+// VitePress's default slugify (mdit-vue) uses NFKD normalization, which
+// decomposes Korean syllables into individual jamo for heading ids. Browser
+// URL hashes are NFC, so the bytes mismatch and in-page links to Korean
+// headings fail to scroll. This keeps the same special-char/digit-prefix
+// handling as mdit-vue but normalizes to NFC instead.
 function nfcSlugify(str: string): string {
   return str
     .normalize('NFC')
