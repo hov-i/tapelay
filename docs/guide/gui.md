@@ -81,14 +81,11 @@ Every finished conversion is kept under **Exports**, with the source URL or file
 
 ## Running behind a reverse proxy
 
-Serving tapelay under a sub-path — `mydomain.com/tapelay/` instead of its own domain — needs the web UI rebuilt with that path baked in, or the JS/CSS requests 404 against the domain root instead:
+Serving tapelay under a sub-path — `mydomain.com/tapelay/` instead of its own domain — needs no special install or rebuild. Just point the server at that path with an environment variable:
 
 ```bash
-git clone https://github.com/hov-i/tapelay.git
-cd tapelay
-npm install
-TAPELAY_BASE_PATH=/tapelay/ npm run build:web
-pm2 start "node server.mjs" --name tapelay
+npm install -g tapelay
+TAPELAY_BASE_PATH=/tapelay/ tapelay serve
 ```
 
 Then point nginx (or any reverse proxy) at it:
@@ -104,4 +101,8 @@ location /tapelay/ {
 }
 ```
 
-Both the `location` path and `TAPELAY_BASE_PATH` need the same value, trailing slash included. Running tapelay at its own domain root needs no changes — `TAPELAY_BASE_PATH` defaults to `/`.
+Both the `location` path and `TAPELAY_BASE_PATH` need the same value, trailing slash included. Running tapelay at its own domain root needs no changes — `TAPELAY_BASE_PATH` defaults to `/`. With pm2:
+
+```bash
+TAPELAY_BASE_PATH=/tapelay/ pm2 start "tapelay serve" --name tapelay
+```

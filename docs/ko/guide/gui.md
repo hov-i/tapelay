@@ -81,14 +81,11 @@ SENTRY_AUTH_TOKEN=sntryu_... npx tapelay serve
 
 ## 리버스 프록시 뒤에서 서빙하기
 
-`mydomain.com`이 아니라 `mydomain.com/tapelay/`처럼 하위 경로로 서빙하려면, 그 경로를 반영해서 웹 UI를 다시 빌드해야 합니다. 그렇지 않으면 JS/CSS 요청이 하위 경로가 아니라 도메인 루트를 찾다가 404가 납니다.
+`mydomain.com`이 아니라 `mydomain.com/tapelay/`처럼 하위 경로로 서빙하려면, 별도 설치나 재빌드가 필요 없습니다. 환경변수 하나로 서버에 그 경로를 알려주기만 하면 됩니다.
 
 ```bash
-git clone https://github.com/hov-i/tapelay.git
-cd tapelay
-npm install
-TAPELAY_BASE_PATH=/tapelay/ npm run build:web
-pm2 start "node server.mjs" --name tapelay
+npm install -g tapelay
+TAPELAY_BASE_PATH=/tapelay/ tapelay serve
 ```
 
 그다음 nginx(또는 다른 리버스 프록시)에서 해당 경로를 연결합니다.
@@ -104,4 +101,8 @@ location /tapelay/ {
 }
 ```
 
-`location` 경로와 `TAPELAY_BASE_PATH` 값은 끝에 붙는 슬래시까지 정확히 같아야 합니다. tapelay를 자체 도메인 루트에서 그대로 쓴다면 아무것도 바꿀 필요가 없습니다 — `TAPELAY_BASE_PATH`의 기본값은 `/`입니다.
+`location` 경로와 `TAPELAY_BASE_PATH` 값은 끝에 붙는 슬래시까지 정확히 같아야 합니다. tapelay를 자체 도메인 루트에서 그대로 쓴다면 아무것도 바꿀 필요가 없습니다 — `TAPELAY_BASE_PATH`의 기본값은 `/`입니다. pm2로 띄운다면:
+
+```bash
+TAPELAY_BASE_PATH=/tapelay/ pm2 start "tapelay serve" --name tapelay
+```

@@ -2,7 +2,7 @@ import express from 'express'
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, readFile, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { normalizeEvents, convertEvents, convertEventsSegmented, sliceRange } from './core.mjs'
 import { listOrgs, listProjects, listReplays, fetchReplayEvents } from './sentry.mjs'
@@ -12,6 +12,22 @@ import { CLIENT_ID, credentialsPath, forgetCredentials, pollDeviceLogin, resolve
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
+
+// The web build's asset filenames (content-hashed) never change with where
+// it is served from, only the path prefix in front of them does. Rather than
+// rebuilding for every deployment location, index.html is templated at
+// request time with whatever sub-path TAPELAY_BASE_PATH says this instance is
+// mounted under (e.g. a reverse proxy at mydomain.com/tapelay/). Static
+// assets are served from that same prefix so the two stay in sync.
+const BASE_PATH = (() => {
+  const raw = process.env.TAPELAY_BASE_PATH || '/'
+  const trimmed = raw.replace(/^\/?/, '/').replace(/\/?$/, '/')
+  return trimmed
+})()
+const indexHtmlTemplate = (await readFile(path.join(__dirname, 'public/index.html'), 'utf8')).replaceAll(
+  '"/assets/',
+  `"${BASE_PATH}assets/`,
+).replaceAll('"/favicon.svg"', `"${BASE_PATH}favicon.svg"`)
 
 const jobs = new Map()
 
@@ -48,7 +64,8 @@ function countRunningJobs() {
   return n
 }
 
-app.use(express.static(path.join(__dirname, 'public')))
+app.use(express.static(path.join(__dirname, 'public'), { index: false }))
+app.get('/', (req, res) => res.type('html').send(indexHtmlTemplate))
 app.use('/api', express.json({ limit: '1mb' }))
 
 // The token is never sent to the browser. It is only persisted when the user
