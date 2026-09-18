@@ -255,12 +255,15 @@ export async function fetchReplayEvents({ apiBase, org, replayId, token, onLog =
 const MAX_ERROR_MARKERS = 25
 
 /**
- * Resolves each issue's `firstSeen` and turns it into an offset from the
+ * Resolves each error event's timestamp and turns it into an offset from the
  * replay's own start time, so the preview timeline can show where in the
  * recording each error actually happened — the same thing Sentry's own
- * replay screen does. One request per issue, run concurrently; an issue that
- * fails to resolve (deleted, no access, etc.) is dropped rather than failing
- * the whole preview, since a missing dot matters far less than a broken one.
+ * replay screen does. `error_ids` on a replay are event ids (32-char hex),
+ * not issue ids, so this goes through the eventids lookup rather than
+ * /issues/{id}/, which expects the numeric issue id instead. One request per
+ * event, run concurrently; an event that fails to resolve (deleted, no
+ * access, etc.) is dropped rather than failing the whole preview, since a
+ * missing dot matters far less than a broken one.
  * @param {{
  *   apiBase: string, org: string, token: string | null,
  *   errorIds: string[], startedAt: string | null,
@@ -276,8 +279,8 @@ export async function fetchErrorOffsets({ apiBase, org, token, errorIds, started
   const offsets = await Promise.all(
     ids.map(async (id) => {
       try {
-        const issue = await (await api(`/organizations/${org}/issues/${id}/`, { apiBase, token })).json()
-        const seenMs = Date.parse(issue.firstSeen)
+        const resolved = await (await api(`/organizations/${org}/eventids/${id}/`, { apiBase, token })).json()
+        const seenMs = Date.parse(resolved.event?.dateCreated)
         if (!Number.isFinite(seenMs)) return null
         return Math.max(0, seenMs - startMs)
       } catch {
