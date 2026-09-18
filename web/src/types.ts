@@ -16,6 +16,7 @@ export type {
   Project,
   ProjectsResponse,
   Replay,
+  ReplayEventsResponse,
   ReplaysResponse,
   SentryJobRequest,
   SentryJobResponse,

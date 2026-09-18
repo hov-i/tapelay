@@ -212,6 +212,37 @@ app.get('/api/sentry/replays', async (req, res) => {
     .catch(apiError(res))
 })
 
+// Preview-only: hands the raw rrweb events to the browser so it can render a
+// scrub-through preview with rrweb-player, the same way Sentry's own UI does.
+// The Sentry token never leaves this process; only the recording (DOM
+// snapshots + mutations) goes to the browser, and only to localhost. Cached
+// briefly per replay since a user typically nudges the clip range several
+// times before converting.
+const replayEventsCache = new Map()
+const REPLAY_EVENTS_CACHE_MS = 10 * 60 * 1000
+
+app.get('/api/sentry/replays/:replayId/events', async (req, res) => {
+  const s = requireSentry(res)
+  if (!s) return
+  const { replayId } = req.params
+  const org = String(req.query.org ?? '')
+  if (!org) return res.status(400).json({ error: 'org is required' })
+
+  const cacheKey = `${org}:${replayId}`
+  const cached = replayEventsCache.get(cacheKey)
+  if (cached && Date.now() - cached.at < REPLAY_EVENTS_CACHE_MS) {
+    return res.json({ events: cached.events })
+  }
+
+  try {
+    const { events } = await fetchReplayEvents({ ...s, org, replayId, onLog: () => {} })
+    replayEventsCache.set(cacheKey, { events, at: Date.now() })
+    res.json({ events })
+  } catch (err) {
+    apiError(res)(err)
+  }
+})
+
 function pushEvent(job, evt) {
   const line = `data: ${JSON.stringify(evt)}\n\n`
   for (const res of job.subscribers) {
@@ -501,6 +532,14 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000)
+
+// Drop preview event caches once they age past their own TTL.
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of replayEventsCache) {
+    if (now - entry.at > REPLAY_EVENTS_CACHE_MS) replayEventsCache.delete(key)
+  }
+}, REPLAY_EVENTS_CACHE_MS)
 
 app.listen(PORT, () => {
   console.log(`\u{1F310}  http://localhost:${PORT}`)

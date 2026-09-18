@@ -80,6 +80,18 @@ export interface ReplaysResponse {
   replays: Replay[]
 }
 
+/**
+ * GET /api/sentry/replays/:replayId/events
+ * Raw rrweb events, shaped for rrweb-player. Preview-only: this is the one
+ * endpoint that sends replay recording data to the browser, so it can render
+ * a scrub-through preview the way Sentry's own UI does. The Sentry token
+ * never leaves the server.
+ */
+export interface ReplayEventsResponse {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  events: any[]
+}
+
 /** POST /api/sentry/jobs */
 export interface SentryJobRequest {
   org: string

@@ -61,7 +61,7 @@ For self-hosted Sentry, set `SENTRY_URL=https://sentry.your-company.com` as well
 
 ## What the browser touches
 
-Nothing. The server fetches the replay from Sentry, converts it, and hands back a finished file. The recording itself never passes through the page.
+The token, never — that stays server-side either way (see above). The recording itself does reach the page, but only for the clip-range preview: once you pick a replay, the server fetches its rrweb events and hands them to the browser tab so you can scrub through the recording and drag the range like Sentry's own replay screen, instead of guessing at mm:ss numbers. That happens entirely over localhost. The actual conversion still runs server-side — the browser only ever sees a preview copy, never the file that gets written to disk.
 
 ## Uploading a file instead
 

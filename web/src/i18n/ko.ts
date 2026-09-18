@@ -91,6 +91,9 @@ export const ko = {
     title: '구간과 포맷',
     summary: (url: string, id: string, length: string, errors: string) =>
       `${url} · ${id}… · 길이 ${length} · ${errors}`,
+    previewLoading: '리플레이를 불러오는 중입니다…',
+    previewError: '리플레이를 불러오지 못했습니다.',
+    previewHint: '화면을 보면서 막대를 드래그해 구간을 지정하세요.',
     start: '시작 (m:ss)',
     end: '끝 (m:ss)',
     last30: '마지막 30초',

@@ -90,6 +90,9 @@ export const en = {
     title: 'Range and format',
     summary: (url: string, id: string, length: string, errors: string) =>
       `${url} · ${id}… · ${length} long · ${errors}`,
+    previewLoading: 'Loading the replay…',
+    previewError: 'Could not load the replay.',
+    previewHint: 'Watch the recording and drag the bar to set the range.',
     start: 'Start (m:ss)',
     end: 'End (m:ss)',
     last30: 'Last 30s',

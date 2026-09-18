@@ -141,7 +141,7 @@ export function ConvertPage({ onExported }: { onExported: () => void }) {
               source={source}
             />
           )}
-          {connected && replay && <ClipPanel replay={replay} busy={busy} onConvert={convert} />}
+          {connected && replay && <ClipPanel org={org} replay={replay} busy={busy} onConvert={convert} />}
         </TabsContent>
 
         <TabsContent value="file">

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ReplayPreview } from '@/components/ReplayPreview'
 import { mmss, parseTime } from '@/lib/utils'
 import type { Format, Replay } from '@/types'
 import { useT } from '@/i18n'
@@ -19,10 +20,12 @@ export interface ClipSettings {
 const GIF_MAX_SEC = 90
 
 export function ClipPanel({
+  org,
   replay,
   busy,
   onConvert,
 }: {
+  org: string
   replay: Replay
   busy: boolean
   onConvert: (settings: ClipSettings) => void
@@ -76,6 +79,18 @@ export function ClipPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        <ReplayPreview
+          org={org}
+          replayId={replay.id}
+          durationSec={replay.durationSec}
+          fromMs={fromMs ?? 0}
+          toMs={toMs ?? replay.durationSec * 1000}
+          onRangeChange={(nextFromMs, nextToMs) => {
+            setFrom(mmss(nextFromMs / 1000))
+            setTo(mmss(nextToMs / 1000))
+          }}
+        />
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="from">{t.clip.start}</Label>
