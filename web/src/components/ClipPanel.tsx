@@ -83,6 +83,8 @@ export function ClipPanel({
           org={org}
           replayId={replay.id}
           durationSec={replay.durationSec}
+          errorIds={replay.errorIds}
+          startedAt={replay.startedAt}
           fromMs={fromMs ?? 0}
           toMs={toMs ?? replay.durationSec * 1000}
           onRangeChange={(nextFromMs, nextToMs) => {

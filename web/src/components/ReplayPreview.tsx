@@ -18,6 +18,8 @@ export function ReplayPreview({
   org,
   replayId,
   durationSec,
+  errorIds,
+  startedAt,
   fromMs,
   toMs,
   onRangeChange,
@@ -25,6 +27,8 @@ export function ReplayPreview({
   org: string
   replayId: string
   durationSec: number
+  errorIds: string[]
+  startedAt: string | null
   fromMs: number
   toMs: number
   onRangeChange: (fromMs: number, toMs: number) => void
@@ -38,8 +42,24 @@ export function ReplayPreview({
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [playing, setPlaying] = useState(false)
   const [cursorMs, setCursorMs] = useState(0)
+  const [errorOffsetsMs, setErrorOffsetsMs] = useState<number[]>([])
 
   const totalMs = Math.max(1, durationSec * 1000)
+
+  // Best-effort, like the recording load below: a marker that fails to
+  // resolve just does not show up, it never blocks the preview itself.
+  useEffect(() => {
+    setErrorOffsetsMs([])
+    if (errorIds.length === 0) return
+    let cancelled = false
+    api
+      .replayErrors(org, replayId, errorIds, startedAt)
+      .then(({ offsetsMs }) => { if (!cancelled) setErrorOffsetsMs(offsetsMs) })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [org, replayId, errorIds, startedAt])
 
   // Load the recording once per replay and mount rrweb-player into the div.
   useEffect(() => {
@@ -197,6 +217,14 @@ export function ReplayPreview({
                 className="pointer-events-none absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-foreground/60"
                 style={{ left: `${cursorPct}%` }}
               />
+              {/* error markers, Sentry's own replay screen shows the same thing */}
+              {errorOffsetsMs.map((ms, i) => (
+                <div
+                  key={i}
+                  className="pointer-events-none absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive"
+                  style={{ left: `${(Math.min(ms, totalMs) / totalMs) * 100}%` }}
+                />
+              ))}
               {/* start handle */}
               <div
                 role="slider"

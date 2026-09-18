@@ -28,6 +28,8 @@ export interface Replay {
   startedAt: string | null
   durationSec: number
   errors: number
+  /** Issue ids attached to this replay, for /replays/:id/errors. */
+  errorIds: string[]
   url: string | null
   browser: string | null
   os: string | null
@@ -90,6 +92,15 @@ export interface ReplaysResponse {
 export interface ReplayEventsResponse {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   events: any[]
+}
+
+/**
+ * GET /api/sentry/replays/:replayId/errors
+ * Each error's firstSeen, expressed as an offset in milliseconds from the
+ * replay's own start, so the preview timeline can mark where they happened.
+ */
+export interface ReplayErrorsResponse {
+  offsetsMs: number[]
 }
 
 /** POST /api/sentry/jobs */

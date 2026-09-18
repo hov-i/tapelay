@@ -175,11 +175,13 @@ export async function listReplays({
  * @returns {import('./protocol').Replay}
  */
 function toReplay(r) {
+  const errorIds = Array.isArray(r.error_ids) ? r.error_ids.map(String) : []
   return {
     id: String(r.id ?? '').replace(/-/g, ''),
     startedAt: r.started_at ?? null,
     durationSec: Number(r.duration) || 0,
-    errors: Number(r.count_errors) || (Array.isArray(r.error_ids) ? r.error_ids.length : 0),
+    errors: Number(r.count_errors) || errorIds.length,
+    errorIds,
     url: Array.isArray(r.urls) ? r.urls[0] ?? null : null,
     browser: r.browser?.name ? `${r.browser.name} ${r.browser.version ?? ''}`.trim() : null,
     os: r.os?.name ?? null,
@@ -245,6 +247,45 @@ export async function fetchReplayEvents({ apiBase, org, replayId, token, onLog =
   fixTimestampUnits(events, onLog)
   events.sort((a, b) => a.timestamp - b.timestamp)
   return { events, durationSec, startedAt: replay.started_at ?? null }
+}
+
+// A replay with a lot of errors (a broken retry loop, say) would otherwise
+// fire one request per issue; this is a preview aid, not the conversion
+// itself, so it is capped rather than risking a slow or rate-limited page.
+const MAX_ERROR_MARKERS = 25
+
+/**
+ * Resolves each issue's `firstSeen` and turns it into an offset from the
+ * replay's own start time, so the preview timeline can show where in the
+ * recording each error actually happened — the same thing Sentry's own
+ * replay screen does. One request per issue, run concurrently; an issue that
+ * fails to resolve (deleted, no access, etc.) is dropped rather than failing
+ * the whole preview, since a missing dot matters far less than a broken one.
+ * @param {{
+ *   apiBase: string, org: string, token: string | null,
+ *   errorIds: string[], startedAt: string | null,
+ * }} options
+ * @returns {Promise<number[]>} offsets in milliseconds from the replay start, sorted
+ */
+export async function fetchErrorOffsets({ apiBase, org, token, errorIds, startedAt }) {
+  if (!startedAt || errorIds.length === 0) return []
+  const startMs = Date.parse(startedAt)
+  if (!Number.isFinite(startMs)) return []
+
+  const ids = errorIds.slice(0, MAX_ERROR_MARKERS)
+  const offsets = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const issue = await (await api(`/organizations/${org}/issues/${id}/`, { apiBase, token })).json()
+        const seenMs = Date.parse(issue.firstSeen)
+        if (!Number.isFinite(seenMs)) return null
+        return Math.max(0, seenMs - startMs)
+      } catch {
+        return null
+      }
+    }),
+  )
+  return offsets.filter((ms) => ms != null).sort((a, b) => a - b)
 }
 
 /**

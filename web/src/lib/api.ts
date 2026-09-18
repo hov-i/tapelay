@@ -8,6 +8,7 @@ import type {
   Org,
   Project,
   Replay,
+  ReplayErrorsResponse,
   ReplayEventsResponse,
   StatusResponse,
 } from '@/types'
@@ -64,6 +65,12 @@ export const api = {
 
   replayEvents: (org: string, replayId: string) =>
     request<ReplayEventsResponse>(`api/sentry/replays/${replayId}/events?org=${encodeURIComponent(org)}`),
+
+  replayErrors: (org: string, replayId: string, errorIds: string[], startedAt: string | null) => {
+    const qs = new URLSearchParams({ org, errorIds: errorIds.join(',') })
+    if (startedAt) qs.set('startedAt', startedAt)
+    return request<ReplayErrorsResponse>(`api/sentry/replays/${replayId}/errors?${qs}`)
+  },
 
   createSentryJob: (body: {
     org: string

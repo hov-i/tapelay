@@ -151,6 +151,15 @@ http
         data: { id: REPLAY_ID, project_id: '111', duration: durationSec, started_at: new Date().toISOString() },
       })
     }
+    // Error markers on the preview timeline: firstSeen spread across the
+    // replay's own duration, offset from the replay's started_at above.
+    const issueMatch = p.match(/^\/api\/0\/organizations\/acme\/issues\/(e\d+)\/$/)
+    if (issueMatch) {
+      const n = Number(issueMatch[1].slice(1))
+      const replayStartMs = Date.now() - 3600e3
+      const offsetSec = (n * 137) % Math.max(1, durationSec - 1)
+      return json(res, 200, { firstSeen: new Date(replayStartMs + offsetSec * 1000).toISOString() })
+    }
     if (p === `/api/0/projects/acme/111/replays/${REPLAY_ID}/recording-segments/`) {
       // Exercise pagination: first page returns half, with a next cursor.
       const half = Math.ceil(events.length / 2)

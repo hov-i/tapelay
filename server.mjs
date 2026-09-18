@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { normalizeEvents, convertEvents, convertEventsSegmented, sliceRange } from './core.mjs'
-import { listOrgs, listProjects, listReplays, fetchReplayEvents } from './sentry.mjs'
+import { listOrgs, listProjects, listReplays, fetchReplayEvents, fetchErrorOffsets } from './sentry.mjs'
 import { deleteExport, exportsDir, getExport, listExports, saveExport } from './exports.mjs'
 import { CLIENT_ID, credentialsPath, forgetCredentials, pollDeviceLogin, resolveCredentials, saveCredentials, startDeviceLogin } from './credentials.mjs'
 
@@ -238,6 +238,26 @@ app.get('/api/sentry/replays/:replayId/events', async (req, res) => {
     const { events } = await fetchReplayEvents({ ...s, org, replayId, onLog: () => {} })
     replayEventsCache.set(cacheKey, { events, at: Date.now() })
     res.json({ events })
+  } catch (err) {
+    apiError(res)(err)
+  }
+})
+
+// Preview-only, same trust boundary as /events above: resolves each error's
+// firstSeen into an offset from the replay start, so the timeline can mark
+// where errors happened. errorIds/startedAt come from the replay the client
+// already fetched via /replays, so this needs no second replay lookup.
+app.get('/api/sentry/replays/:replayId/errors', async (req, res) => {
+  const s = requireSentry(res)
+  if (!s) return
+  const org = String(req.query.org ?? '')
+  const startedAt = req.query.startedAt ? String(req.query.startedAt) : null
+  const errorIds = String(req.query.errorIds ?? '').split(',').filter(Boolean)
+  if (!org) return res.status(400).json({ error: 'org is required' })
+
+  try {
+    const offsetsMs = await fetchErrorOffsets({ ...s, org, errorIds, startedAt })
+    res.json({ offsetsMs })
   } catch (err) {
     apiError(res)(err)
   }
