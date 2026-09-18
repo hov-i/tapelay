@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -26,3 +26,11 @@ jobs:
       # 하고, provenance도 자동으로 붙는다. 공개 범위는 워크플로가 아니라
       # package.json의 publishConfig.access에서 관리한다.
       - run: npm publish
+
+      # 태그 push로 실행됐을 때만: 이전 태그 이후의 커밋을 모아 릴리스 노트를
+      # 자동 생성한다. workflow_dispatch(수동 재실행)는 보통 실패한 배포를
+      # 다시 돌리는 상황이라 릴리스를 새로 만들 필요가 없다.
+      - if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --generate-notes
