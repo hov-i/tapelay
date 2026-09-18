@@ -106,3 +106,5 @@ location /tapelay/ {
 ```bash
 TAPELAY_BASE_PATH=/tapelay/ pm2 start "tapelay serve" --name tapelay
 ```
+
+**같은 nginx 설정 안의 다른 `location` 블록을 주의하세요.** 브라우저는 tapelay 자체 API 요청을 페이지가 로드된 경로 기준 상대경로로 보내지만, `location /tapelay/`보다 위에 `location /api/` 같은 범용 블록이 있으면 nginx가 tapelay 블록에 도달하기도 전에 그 요청을 가로챌 수 있습니다. nginx는 "가장 긴 접두사"를 우선 매칭하는데, 밋밋한 `/api/`는 생각보다 많은 요청과 겹칩니다. Sentry 연결 요청이 tapelay 고유의 JSON 에러 대신 빈 바디의 `403`으로 돌아온다면, 거의 항상 이 경우입니다 — 요청이 tapelay가 아니라 `/api/`가 원래 가리키던 다른 곳으로 간 것입니다.

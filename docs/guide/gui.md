@@ -106,3 +106,5 @@ Both the `location` path and `TAPELAY_BASE_PATH` need the same value, trailing s
 ```bash
 TAPELAY_BASE_PATH=/tapelay/ pm2 start "tapelay serve" --name tapelay
 ```
+
+**Watch out for other `location` blocks on the same nginx config.** The browser resolves tapelay's own API calls relative to whatever page it was loaded from, but a generic block like `location /api/` above `location /tapelay/` will still intercept requests that happen to match it before nginx ever reaches the tapelay block — nginx picks the longest matching prefix, and a bare `/api/` matches plenty. If Sentry connect requests come back `403` with an empty body instead of tapelay's own JSON error, that is almost always this: the request went to whatever else `/api/` was already pointed at, not to tapelay.

@@ -9,7 +9,8 @@
 | Out of memory | Lower `--segment`, or raise the heap with `node --max-old-space-size=8192`. Clipping with `--from`/`--to` avoids the problem entirely. |
 | The MP4 will not open in QuickTime | You used `--no-transcode`. Drop it. |
 | GIF is enormous | Shorten the range, lower `--gif-fps`, or lower `--gif-width`. |
-| Conversion is slow | It is a real-time replay. Clip the range instead of raising `--speed`. |
+| Conversion is slow | It is a real-time replay: converting `windowSeconds / speed` seconds is expected, not a bug. Clip the range, or raise `--speed`, to cut it down. |
+| `No replayable FullSnapshot exists for that range` on every range, including the whole session | A minority of events from some Sentry SDK versions carry a seconds-based Unix timestamp instead of milliseconds, which throws the session's apparent duration off by roughly 1000x (minutes read as decades) and puts every requested window nowhere near where the snapshots actually are. `fetchReplayEvents` detects and fixes this automatically as of tapelay 0.3.4 — update if you are on an older version. |
 
 ## Verifying an output
 
