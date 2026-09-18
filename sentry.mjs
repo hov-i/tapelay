@@ -242,6 +242,32 @@ export async function fetchReplayEvents({ apiBase, org, replayId, token, onLog =
     throw new Error('Sentry returned no rrweb events for this replay. It may have expired past your retention window.')
   }
 
+  fixTimestampUnits(events, onLog)
   events.sort((a, b) => a.timestamp - b.timestamp)
   return { events, durationSec, startedAt: replay.started_at ?? null }
+}
+
+/**
+ * A minority of events from some SDK versions carry a seconds-based Unix
+ * timestamp instead of the milliseconds rrweb expects, which throws off
+ * sorting and duration math by orders of magnitude (a session reads as
+ * spanning decades instead of minutes). Detected by comparing each
+ * timestamp's order of magnitude against the session's median: seconds and
+ * milliseconds differ by ~1000x, so a real minutes-to-hours-long session
+ * never has two events that far apart by chance.
+ * @param {any[]} events
+ * @param {(m: string) => void} onLog
+ */
+function fixTimestampUnits(events, onLog) {
+  const sorted = events.map((e) => e.timestamp).filter(Number.isFinite).sort((a, b) => a - b)
+  const median = sorted[Math.floor(sorted.length / 2)]
+  if (!median) return
+  let fixed = 0
+  for (const e of events) {
+    if (Number.isFinite(e.timestamp) && e.timestamp < median / 100) {
+      e.timestamp = Math.round(e.timestamp * 1000)
+      fixed++
+    }
+  }
+  if (fixed > 0) onLog(`Fixed ${fixed} event(s) with a seconds-based timestamp instead of milliseconds.`)
 }
