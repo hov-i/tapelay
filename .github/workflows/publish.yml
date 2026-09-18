@@ -17,9 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # Trusted Publishing(OIDC)은 npm >= 11.5.1이 필요하다. setup-node가
-      # 깔아주는 npm이 그보다 낮은 버전이면 여기서 최신으로 올린다.
-      - run: npm install -g npm@latest
+      # Trusted Publishing(OIDC)은 npm >= 11.5.1이 필요하다. Node 20이 깔아주는
+      # npm은 그보다 낮아서 버전을 올려야 하는데, npm@latest(12.x)는 Node 22+를
+      # 요구해 Node 20에서는 설치가 막힌다. OIDC 요건을 만족하는 11.x 계열로
+      # 고정해서 올린다.
+      - run: npm install -g npm@11
       # 토큰 없이 진행: 위의 id-token: write 권한으로 npm이 OIDC 인증을
       # 하고, provenance도 자동으로 붙는다. 공개 범위는 워크플로가 아니라
       # package.json의 publishConfig.access에서 관리한다.
