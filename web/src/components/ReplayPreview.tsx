@@ -94,9 +94,15 @@ export function ReplayPreview({
     }
   }, [playing, fromMs, toMs])
 
-  // Re-loop whenever the range changes while already playing.
+  // Re-loop when the range changes *while already playing* (e.g. the user
+  // drags a handle mid-playback) — but never on the play/pause transition
+  // itself, or this fires a second, overlapping playRange() right after
+  // togglePlay()'s own call and the replayer's scheduler stalls.
+  const rangeRef = useRef({ fromMs, toMs })
   useEffect(() => {
-    if (playing) playerRef.current?.playRange(fromMs, toMs, true)
+    const rangeChanged = rangeRef.current.fromMs !== fromMs || rangeRef.current.toMs !== toMs
+    rangeRef.current = { fromMs, toMs }
+    if (playing && rangeChanged) playerRef.current?.playRange(fromMs, toMs, true)
   }, [fromMs, toMs, playing])
 
   function msFromClientX(clientX: number) {
