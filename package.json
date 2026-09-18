@@ -55,6 +55,9 @@
   "bugs": {
     "url": "https://github.com/hov-i/tapelay/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "node server.mjs",
     "dev": "node server.mjs",

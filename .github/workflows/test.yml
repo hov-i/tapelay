@@ -1,0 +1,38 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build:web
+
+      - name: 서버 코드를 protocol.d.ts 기준으로 타입체크
+        run: npm run typecheck:api
+
+      - name: 로그인 플로우 e2e (mock Sentry 기준)
+        env:
+          TAPELAY_HOME: /tmp/tapelay-ci-home
+          PORT: '3010'
+          SENTRY_CLIENT_ID: ci-test-client
+          SENTRY_URL: http://127.0.0.1:4011
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/make-fixture.mjs 20 /tmp/fx20.json
+          node scripts/mock-sentry.mjs /tmp/fx20.json 4011 &
+          node server.mjs &
+          npx wait-on http://127.0.0.1:3010 tcp:4011
+          node scripts/device-login-test.mjs

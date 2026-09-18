@@ -1,0 +1,26 @@
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # Trusted Publishing(OIDC)은 npm >= 11.5.1이 필요하다. setup-node가
+      # 깔아주는 npm이 그보다 낮은 버전이면 여기서 최신으로 올린다.
+      - run: npm install -g npm@latest
+      # 토큰 없이 진행: 위의 id-token: write 권한으로 npm이 OIDC 인증을
+      # 하고, provenance도 자동으로 붙는다. 공개 범위는 워크플로가 아니라
+      # package.json의 publishConfig.access에서 관리한다.
+      - run: npm publish
