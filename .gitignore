@@ -19,3 +19,6 @@ web/dist/
 # desktop app screenshots
 Claude outputs/
 .playwright-mcp/
+
+# macOS Finder folder settings
+.DS_Store
