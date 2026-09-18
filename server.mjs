@@ -28,6 +28,7 @@ const indexHtmlTemplate = (await readFile(path.join(__dirname, 'public/index.htm
   '"/assets/',
   `"${BASE_PATH}assets/`,
 ).replaceAll('"/favicon.svg"', `"${BASE_PATH}favicon.svg"`)
+const { version: APP_VERSION } = JSON.parse(await readFile(path.join(__dirname, 'package.json'), 'utf8'))
 
 const jobs = new Map()
 
@@ -99,6 +100,10 @@ const apiError = (res) => (err) => {
   console.error('[sentry]', err)
   res.status(502).json({ error: err?.message ?? String(err) })
 }
+
+app.get('/api/version', (req, res) => {
+  res.json({ version: APP_VERSION })
+})
 
 app.get('/api/sentry/status', (req, res) => {
   res.json({

@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/hov-i/tapelay/releases/latest"><img src="https://img.shields.io/github/v/release/hov-i/tapelay?color=171717&label=release" alt="Latest release"></a>
   <a href="https://hov-i.github.io/tapelay/"><img src="https://img.shields.io/badge/docs-hov--i.github.io-171717" alt="Documentation"></a>
   <a href="./package.json"><img src="https://img.shields.io/github/package-json/node/hov-i/tapelay?color=171717" alt="Node version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-171717" alt="MIT License"></a>

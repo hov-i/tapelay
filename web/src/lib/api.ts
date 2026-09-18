@@ -30,6 +30,8 @@ const postJson = (data: unknown) =>
 const relative = (path: string) => path.replace(/^\/+/, '')
 
 export const api = {
+  version: () => request<{ version: string }>('api/version'),
+
   status: () => request<StatusResponse>('api/sentry/status'),
 
   connect: (host: string, token: string, remember: boolean) =>

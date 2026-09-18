@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/hov-i/tapelay/releases/latest"><img src="https://img.shields.io/github/v/release/hov-i/tapelay?color=171717&label=release" alt="최신 릴리즈"></a>
   <a href="https://hov-i.github.io/tapelay/ko/"><img src="https://img.shields.io/badge/docs-hov--i.github.io-171717" alt="문서"></a>
   <a href="./package.json"><img src="https://img.shields.io/github/package-json/node/hov-i/tapelay?color=171717" alt="Node 버전"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-171717" alt="MIT 라이선스"></a>

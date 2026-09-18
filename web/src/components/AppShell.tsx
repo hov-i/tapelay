@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { FileVideo, History } from 'lucide-react'
 import { Mark } from '@/components/Mark'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
+import { api } from '@/lib/api'
 
 export type View = 'convert' | 'exports'
 
@@ -16,10 +18,18 @@ export function AppShell({
   children: React.ReactNode
 }) {
   const t = useT()
+  const [version, setVersion] = useState<string | null>(null)
   const items = [
     { id: 'convert' as const, label: t.nav.convert, Icon: FileVideo },
     { id: 'exports' as const, label: t.nav.exports, Icon: History },
   ]
+
+  useEffect(() => {
+    api
+      .version()
+      .then(({ version }) => setVersion(version))
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -49,6 +59,16 @@ export function AppShell({
         </div>
         <div className="hidden p-4 md:block">
           <LanguageToggle />
+          {version && (
+            <a
+              href="https://github.com/hov-i/tapelay/releases/latest"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 block text-xs text-muted-foreground hover:text-foreground"
+            >
+              v{version}
+            </a>
+          )}
         </div>
       </aside>
 
