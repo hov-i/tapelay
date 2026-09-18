@@ -3,7 +3,7 @@ import { Pause, Play } from 'lucide-react'
 import type RRwebPlayer from 'rrweb-player'
 import 'rrweb-player/dist/style.css'
 import { api } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import { Slider } from '@/components/ui/slider'
 import { useT } from '@/i18n'
 
 /**
@@ -36,8 +36,7 @@ export function ReplayPreview({
   const t = useT()
   const mountRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<InstanceType<typeof RRwebPlayer> | null>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
-  const draggingRef = useRef<'from' | 'to' | null>(null)
+  const trackRef = useRef<HTMLSpanElement>(null)
 
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [playing, setPlaying] = useState(false)
@@ -125,48 +124,27 @@ export function ReplayPreview({
     if (playing && rangeChanged) playerRef.current?.playRange(fromMs, toMs, true)
   }, [fromMs, toMs, playing])
 
-  function msFromClientX(clientX: number) {
-    const track = trackRef.current
-    if (!track) return 0
-    const rect = track.getBoundingClientRect()
-    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
-    return Math.round(ratio * totalMs)
+  // Radix's own thumb drag already reports [from, to] in the right order, so
+  // this only needs to enforce the 200ms minimum gap the old handles had.
+  function onRangeSliderChange([next0, next1]: number[]) {
+    if (next1 - next0 < 200) return
+    onRangeChange(next0, next1)
   }
 
-  function startDrag(handle: 'from' | 'to') {
-    return (e: React.PointerEvent) => {
-      e.preventDefault()
-      draggingRef.current = handle
-      ;(e.target as Element).setPointerCapture(e.pointerId)
-    }
-  }
-
-  function onTrackPointerMove(e: React.PointerEvent) {
-    const handle = draggingRef.current
-    if (!handle) return
-    const ms = msFromClientX(e.clientX)
-    if (handle === 'from') {
-      onRangeChange(Math.min(ms, toMs - 200), toMs)
-    } else {
-      onRangeChange(fromMs, Math.max(ms, fromMs + 200))
-    }
-  }
-
-  function endDrag() {
-    draggingRef.current = null
-  }
-
-  // Clicking anywhere on the track (outside the handles) seeks playback there,
-  // which is the fastest way to scan for the moment that matters.
+  // Clicking anywhere on the track (not a thumb) seeks playback there, which
+  // is the fastest way to scan for the moment that matters. Radix intercepts
+  // track clicks to move the nearest thumb, so this reads the click position
+  // independently rather than fighting that behavior.
   function onTrackClick(e: React.MouseEvent) {
-    if (draggingRef.current) return
-    const ms = msFromClientX(e.clientX)
+    const track = trackRef.current
+    if (!track || (e.target as Element).closest('[role="slider"]')) return
+    const rect = track.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const ms = Math.round(ratio * totalMs)
     playerRef.current?.goto(ms)
     setCursorMs(ms)
   }
 
-  const fromPct = (fromMs / totalMs) * 100
-  const toPct = (toMs / totalMs) * 100
   const cursorPct = (Math.min(cursorMs, totalMs) / totalMs) * 100
 
   return (
@@ -197,21 +175,18 @@ export function ReplayPreview({
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 translate-x-px" />}
             </button>
 
-            <div
+            <Slider
               ref={trackRef}
-              className="relative h-8 flex-1 cursor-pointer select-none"
-              onPointerMove={onTrackPointerMove}
-              onPointerUp={endDrag}
-              onPointerLeave={endDrag}
+              className="h-8 flex-1"
+              min={0}
+              max={totalMs}
+              step={100}
+              minStepsBetweenThumbs={2}
+              value={[fromMs, toMs]}
+              onValueChange={onRangeSliderChange}
               onClick={onTrackClick}
+              thumbLabels={[t.clip.start, t.clip.end]}
             >
-              {/* full track */}
-              <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-border" />
-              {/* selected range */}
-              <div
-                className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-primary"
-                style={{ left: `${fromPct}%`, width: `${Math.max(0, toPct - fromPct)}%` }}
-              />
               {/* playback cursor */}
               <div
                 className="pointer-events-none absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-foreground/60"
@@ -225,35 +200,7 @@ export function ReplayPreview({
                   style={{ left: `${(Math.min(ms, totalMs) / totalMs) * 100}%` }}
                 />
               ))}
-              {/* start handle */}
-              <div
-                role="slider"
-                aria-label={t.clip.start}
-                aria-valuemin={0}
-                aria-valuemax={toMs}
-                aria-valuenow={fromMs}
-                onPointerDown={startDrag('from')}
-                className={cn(
-                  'absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize',
-                  'rounded-full border-2 border-primary bg-background shadow',
-                )}
-                style={{ left: `${fromPct}%` }}
-              />
-              {/* end handle */}
-              <div
-                role="slider"
-                aria-label={t.clip.end}
-                aria-valuemin={fromMs}
-                aria-valuemax={totalMs}
-                aria-valuenow={toMs}
-                onPointerDown={startDrag('to')}
-                className={cn(
-                  'absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize',
-                  'rounded-full border-2 border-primary bg-background shadow',
-                )}
-                style={{ left: `${toPct}%` }}
-              />
-            </div>
+            </Slider>
           </div>
           <p className="text-xs text-muted-foreground">{t.clip.previewHint}</p>
         </>
