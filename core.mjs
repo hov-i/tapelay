@@ -4,6 +4,15 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { transformToVideo } from 'rrvideo'
+import ffmpegStaticPath from 'ffmpeg-static'
+import ffprobeStatic from 'ffprobe-static'
+
+// ffmpeg-static/ffprobe-static ship a prebuilt binary per platform, so a
+// fresh `npm install` works without the user installing ffmpeg themselves.
+// Fall back to PATH in case the postinstall download was skipped (offline
+// install, --ignore-scripts) or the platform has no prebuilt binary.
+export const FFMPEG_BIN = ffmpegStaticPath || 'ffmpeg'
+const FFPROBE_BIN = ffprobeStatic?.path || 'ffprobe'
 
 export function normalizeEvents(raw) {
   const visit = (n) => {
@@ -165,7 +174,7 @@ export function sliceRange(events, fromMs = 0, toMs = null) {
 
 export function hasFfmpeg() {
   return new Promise((resolve) => {
-    const proc = spawn('ffmpeg', ['-version'], { stdio: 'ignore' })
+    const proc = spawn(FFMPEG_BIN, ['-version'], { stdio: 'ignore' })
     proc.on('error', () => resolve(false))
     proc.on('close', (code) => resolve(code === 0))
   })
@@ -334,7 +343,7 @@ function sliceForWindow(events, winStart, winEnd) {
 function probeDurationSec(file) {
   return new Promise((resolve) => {
     const proc = spawn(
-      'ffprobe',
+      FFPROBE_BIN,
       ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file],
       { stdio: ['ignore', 'pipe', 'ignore'] },
     )
@@ -350,7 +359,7 @@ function probeDurationSec(file) {
 
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    const proc = spawn(FFMPEG_BIN, args, { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderr = ''
     proc.stderr.on('data', (d) => { stderr += d.toString() })
     proc.on('error', reject)

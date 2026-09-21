@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { normalizeEvents, convertEvents, convertEventsSegmented, sliceRange } from './core.mjs'
+import { normalizeEvents, convertEvents, convertEventsSegmented, sliceRange, FFMPEG_BIN } from './core.mjs'
 import { parseReplayUrl, fetchReplayEvents } from './sentry.mjs'
 import { resolveCredentials, sentryCliPath } from './credentials.mjs'
 
@@ -289,13 +289,17 @@ async function runConvert(input, explicitOutput, args, log) {
 
   // Playwright records VP8/WebM, so ffmpeg is what turns the result into a file
   // that actually opens outside a browser. It also does the segment trim/concat.
-  if ((transcode || willSegment) && !(await which('ffmpeg', ['-version']))) {
+  // ffmpeg-static bundles a prebuilt binary, so this only fires when that
+  // download was skipped (offline install, --ignore-scripts) and there is no
+  // ffmpeg on PATH either.
+  if ((transcode || willSegment) && !(await which(FFMPEG_BIN, ['-version']))) {
     const why = willSegment
       ? `This session is ${(totalMs / 60000).toFixed(0)} minutes long, so it has to be converted in segments and stitched together`
       : 'The recording comes out of Playwright as VP8/WebM and has to be encoded to H.264'
     itemFail(
-      `${why}, but ffmpeg is not on PATH.`,
-      'Install it (macOS: brew install ffmpeg, Debian/Ubuntu: apt install ffmpeg).' +
+      `${why}, but ffmpeg is not available.`,
+      'Reinstall with `npm install` to fetch the bundled ffmpeg, or install your own ' +
+        '(macOS: brew install ffmpeg, Debian/Ubuntu: apt install ffmpeg).' +
         (willSegment ? '' : ' Or pass --no-transcode to keep the raw WebM.'),
     )
   }

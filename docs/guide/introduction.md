@@ -26,6 +26,6 @@ You give it a replay URL. It pulls the recording through the Sentry API, replays
 
 - Node 20 or newer
 - Chromium, which Playwright downloads on first install
-- ffmpeg and ffprobe on `PATH`
+- ffmpeg and ffprobe, bundled via `ffmpeg-static`/`ffprobe-static` — no separate install
 
 See [Quick Start](/guide/quick-start).

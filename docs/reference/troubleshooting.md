@@ -3,7 +3,7 @@
 | Symptom | Cause and fix |
 |---|---|
 | `Playwright Chromium is not installed` | The postinstall step was skipped. Run `npx playwright install chromium`. |
-| `ffmpeg is not on PATH` | Install ffmpeg (`brew install ffmpeg`, `apt install ffmpeg`). For a short session you can pass `--no-transcode`, at the cost of getting a WebM named `.mp4`. |
+| `ffmpeg is not available` | ffmpeg ships bundled via `ffmpeg-static`, so this only happens if that download was skipped (offline install, `--ignore-scripts`). Run `npm install` again, or install your own ffmpeg (`brew install ffmpeg`, `apt install ffmpeg`). For a short session you can pass `--no-transcode`, at the cost of getting a WebM named `.mp4`. |
 | `Timeout exceeded ... setting frame content` | An occasional flake from `rrvideo` when Chromium is slow to start. Re-run. |
 | Blank areas or missing fonts in the video | The original page loaded those assets from an origin that blocks them at replay time. This is an rrweb limitation and not something this tool can recover. |
 | Out of memory | Lower `--segment`, or raise the heap with `node --max-old-space-size=8192`. Clipping with `--from`/`--to` avoids the problem entirely. |

@@ -41,9 +41,4 @@ npm install -g tapelay
 
 최초 설치 시 Playwright가 Chromium(약 150MB)을 내려받습니다. 이 단계가 건너뛰어졌다면 `npx playwright install chromium`을 실행하세요.
 
-`PATH`에 **ffmpeg**와 **ffprobe**도 있어야 합니다.
-
-```bash
-brew install ffmpeg        # macOS
-sudo apt install ffmpeg    # Debian / Ubuntu
-```
+**ffmpeg**와 **ffprobe**는 `ffmpeg-static`/`ffprobe-static`으로 함께 설치되므로, 별도로 설치할 필요가 없습니다.

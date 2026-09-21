@@ -41,9 +41,4 @@ npm install -g tapelay
 
 The first install downloads Chromium (about 150 MB) through Playwright. If that step was skipped, run `npx playwright install chromium`.
 
-You also need **ffmpeg** with **ffprobe** on `PATH`:
-
-```bash
-brew install ffmpeg        # macOS
-sudo apt install ffmpeg    # Debian / Ubuntu
-```
+**ffmpeg** and **ffprobe** are bundled via `ffmpeg-static`/`ffprobe-static`, so nothing else to install there.

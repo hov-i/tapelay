@@ -3,7 +3,7 @@
 | 증상 | 원인과 해결 |
 |---|---|
 | `Playwright Chromium is not installed` | postinstall이 건너뛰어졌습니다. `npx playwright install chromium`. |
-| `ffmpeg is not on PATH` | ffmpeg 설치(`brew install ffmpeg`, `apt install ffmpeg`). 짧은 세션이면 `--no-transcode`로 넘길 수 있지만, 확장자만 mp4인 WebM이 나옵니다. |
+| `ffmpeg is not available` | ffmpeg는 `ffmpeg-static`으로 함께 설치되므로, 이 오류는 그 다운로드가 건너뛰어졌을 때만(오프라인 설치, `--ignore-scripts`) 발생합니다. `npm install`을 다시 실행하거나, 직접 ffmpeg를 설치하세요(`brew install ffmpeg`, `apt install ffmpeg`). 짧은 세션이면 `--no-transcode`로 넘길 수 있지만, 확장자만 mp4인 WebM이 나옵니다. |
 | `Timeout exceeded ... setting frame content` | Chromium 기동이 느릴 때 `rrvideo`에서 가끔 나는 플레이크입니다. 다시 실행하세요. |
 | 영상에 빈 영역이나 깨진 폰트 | 원본 페이지가 그 리소스를 재생 시점에 차단하는 origin에서 불러왔습니다. rrweb의 한계라 이 도구가 복구할 수 없습니다. |
 | 메모리 부족 | `--segment`를 줄이거나 `node --max-old-space-size=8192`로 힙을 늘리세요. `--from`/`--to`로 구간을 자르면 아예 생기지 않습니다. |

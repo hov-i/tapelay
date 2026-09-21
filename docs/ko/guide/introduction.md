@@ -26,6 +26,6 @@ PostHog도 사정은 비슷합니다. 클립 export 기능은 나왔지만 [세�
 
 - Node 20 이상
 - Chromium (Playwright가 최초 설치 시 내려받습니다)
-- `PATH`에 ffmpeg와 ffprobe
+- ffmpeg와 ffprobe (`ffmpeg-static`/`ffprobe-static`으로 함께 설치되므로 별도 설치 불필요)
 
 [빠른 시작](/ko/guide/quick-start)으로 이어집니다.
