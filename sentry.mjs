@@ -291,24 +291,29 @@ export async function fetchErrorOffsets({ apiBase, org, token, errorIds, started
   return offsets.filter((ms) => ms != null).sort((a, b) => a - b)
 }
 
+// Unix milliseconds passed this mark in 2001, and stay above it for the next
+// ~29000 years; a seconds-based timestamp only reaches it in the year 33658.
+// Anything below is therefore seconds, whatever the rest of the session looks
+// like.
+const MS_EPOCH_FLOOR = 1e12
+
 /**
- * A minority of events from some SDK versions carry a seconds-based Unix
- * timestamp instead of the milliseconds rrweb expects, which throws off
- * sorting and duration math by orders of magnitude (a session reads as
- * spanning decades instead of minutes). Detected by comparing each
- * timestamp's order of magnitude against the session's median: seconds and
- * milliseconds differ by ~1000x, so a real minutes-to-hours-long session
- * never has two events that far apart by chance.
+ * Events from some SDK versions carry a seconds-based Unix timestamp instead
+ * of the milliseconds rrweb expects, which throws off sorting and duration
+ * math by orders of magnitude (a session reads as spanning decades instead of
+ * minutes, so range checks reject it and no FullSnapshot lands in the window).
+ *
+ * Judged per event against a fixed epoch floor rather than against the
+ * session's own median: a replay can have *more* seconds-based events than
+ * millisecond ones, which drags the median into seconds and leaves a
+ * relative test with nothing to flag.
  * @param {any[]} events
  * @param {(m: string) => void} onLog
  */
 function fixTimestampUnits(events, onLog) {
-  const sorted = events.map((e) => e.timestamp).filter(Number.isFinite).sort((a, b) => a - b)
-  const median = sorted[Math.floor(sorted.length / 2)]
-  if (!median) return
   let fixed = 0
   for (const e of events) {
-    if (Number.isFinite(e.timestamp) && e.timestamp < median / 100) {
+    if (Number.isFinite(e.timestamp) && e.timestamp > 0 && e.timestamp < MS_EPOCH_FLOOR) {
       e.timestamp = Math.round(e.timestamp * 1000)
       fixed++
     }
